@@ -1,0 +1,9 @@
+# Development and test dependencies (decision D37). httpx, the client of FastAPI's test client, is pinned in U19. pytest-xdist is not
+# pinned (decision D34).
+-r requirements-api.txt
+pytest==9.2.0
+# transitive
+colorama==0.4.6
+iniconfig==2.3.1
+pluggy==1.7.0
+Pygments==2.21.0

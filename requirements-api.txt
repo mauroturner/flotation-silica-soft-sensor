@@ -1,0 +1,3 @@
+# The estimation API's dependencies (decisions D27 and D37). Outside the Airflow image: the Dockerfile installs requirements.txt only (D28).
+# No direct pins until U19 adds fastapi, pydantic and uvicorn at the latest stable version of that day.
+-r requirements.txt
