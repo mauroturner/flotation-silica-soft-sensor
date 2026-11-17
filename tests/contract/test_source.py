@@ -237,6 +237,21 @@ def test_tables_that_do_not_match_their_manifest_are_rebuilt_and_refused_by_the_
     assert canonical_state(interim) is None
 
 
+def test_tables_of_an_older_manifest_version_are_rebuilt_not_read(quick_cfg, tmp_path, small_arff):
+    """The hours gained a column (V24, U05): tables written under version 1 of the manifest are the ones of another contract."""
+    ctx = quick_ctx(quick_cfg, tmp_path, small_arff)
+    fetch_source(ctx)
+    interim = ctx.cfg.paths.interim_dir
+    path = interim / INTERIM_MANIFEST
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert document["version"] == 2
+    path.write_text(json.dumps({**document, "version": 1}), encoding="utf-8")
+    assert canonical_state(interim) is None
+    with pytest.raises(InterimError, match="manifiesto válido"):
+        read_canonical(interim)
+    assert fetch_source(ctx)["built"] is True and json.loads(path.read_text(encoding="utf-8"))["version"] == 2
+
+
 def test_a_failure_between_the_tables_and_the_manifest_leaves_tables_that_every_reader_refuses(quick_cfg, tmp_path, small_arff, monkeypatch):
     ctx = quick_ctx(quick_cfg, tmp_path, small_arff)
     interim = ctx.cfg.paths.interim_dir

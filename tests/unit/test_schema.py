@@ -54,10 +54,10 @@ def test_forbidden_names_include_every_laboratory_value_of_a_row(name, forbidden
 def test_the_arrow_schemas_name_the_canonical_columns_and_hold_no_laboratory_value_per_row():
     assert SOURCE_ROWS_SCHEMA.names == ["row_id", "hour", "row_in_hour", *SENSORS]
     assert not set(SOURCE_ROWS_SCHEMA.names) & set(LAB_COLUMNS)
-    assert SOURCE_HOURS_SCHEMA.names[:11] == [
+    assert SOURCE_HOURS_SCHEMA.names[:12] == [
         "hour", "hour_key", "rows", "is_partial", "silica_pct", "iron_conc_pct", "feed_silica_pct", "feed_iron_pct", "lab_state",
-        "feed_silica_age_h", "feed_iron_age_h"]
-    assert SOURCE_HOURS_SCHEMA.names[11:] == list(AGGREGATE_COLUMNS) and "is_ramp" not in SOURCE_HOURS_SCHEMA.names
+        "feed_silica_age_h", "feed_iron_age_h", "feed_changes_in_hour"]
+    assert SOURCE_HOURS_SCHEMA.names[12:] == list(AGGREGATE_COLUMNS) and "is_ramp" not in SOURCE_HOURS_SCHEMA.names
     assert str(SOURCE_ROWS_SCHEMA.field("hour").type) == "timestamp[ns]" and str(SOURCE_ROWS_SCHEMA.field("row_id").type) == "int64"
 
 

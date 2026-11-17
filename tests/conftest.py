@@ -152,3 +152,16 @@ def canonical(fixture_arff: Path, quick_cfg):
     read, report = read_arff(fixture_arff, quick_cfg)
     rows, hours = build(read, quick_cfg)
     return types.SimpleNamespace(read=read, report=report, rows=rows, hours=hours)
+
+
+@pytest.fixture(scope="session")
+def published(tmp_path_factory: pytest.TempPathFactory, canonical, quick_cfg):
+    """The whole quick plan of the standard fixture published once (plan, section 24.1): ``folder`` (with ``manifest.json``), ``plan`` and, by
+    delivery id, ``entry``, ``rows`` and ``hours`` as read back from its files. A test that writes copies the folder (``copy_of``)."""
+    from flotsilica.deliveries import delivery_plan, publish, read_delivery
+
+    folder = tmp_path_factory.mktemp("deliveries")
+    plan = delivery_plan(quick_cfg)
+    entries = {spec.delivery_id: publish(spec, canonical.rows, canonical.hours, folder) for spec in plan}
+    items = {delivery_id: (entry, *read_delivery(folder, entry)) for delivery_id, entry in entries.items()}
+    return types.SimpleNamespace(folder=folder, plan=plan, entries=entries, items=items)

@@ -150,3 +150,22 @@ def test_an_hour_with_two_distinct_values_in_its_rows_is_a_ramp_hour_for_the_mar
     rows, hours = build(pd.DataFrame(records), quick_cfg)
     assert list(hours["lab_state"]) == ["fresh", "fresh", "interpolated", "fresh"] and list(hours["silica_pct"]) == [1.0, 2.0, 3.0, 4.0]
     assert "is_ramp" not in hours.columns and "is_ramp" not in rows.columns and len(rows) == 12
+
+
+def test_an_hour_whose_feed_changes_between_its_rows_is_flagged_for_v24_and_keeps_its_first_row(quick_cfg, canonical):
+    """V24 is judged on the delivered hours, whose rows carry no laboratory column (V15), so ``canonical`` records, per hour, that the feed
+    (either of its two values) has more than one distinct value among the rows; the hour keeps the value of its first row (D04)."""
+    from flotsilica.ingest import canonical as build
+
+    records = []
+    plan = {0: ([55.0, 55.0, 55.0], [16.0, 16.0, 16.0]), 1: ([55.0, 55.5, 55.5], [16.0, 16.0, 16.0]),
+            2: ([55.0, 55.0, 55.0], [16.0, 16.5, 16.0]), 3: ([55.5, 55.5, 55.5], [16.0, 16.0, 16.0])}
+    for k, (iron, silica) in plan.items():
+        for j in range(3):
+            records.append({"row_id": len(records) + 1, "hour": T0 + timedelta(hours=k), "row_in_hour": j + 1, "feed_iron_pct": iron[j], "feed_silica_pct": silica[j],
+                            **{sensor: 1.0 for sensor in SENSORS}, "iron_conc_pct": 66.0, "silica_pct": 2.0 + k})
+    _rows, hours = build(pd.DataFrame(records), quick_cfg)
+    assert list(hours["feed_changes_in_hour"]) == [False, True, True, False]
+    assert list(hours["feed_iron_pct"]) == [55.0, 55.0, 55.0, 55.5] and list(hours["feed_silica_pct"]) == [16.0] * 4
+    assert hours["feed_changes_in_hour"].dtype == bool
+    assert not canonical.hours["feed_changes_in_hour"].any()   # the fixture's feed never changes within an hour (its truth: 0)

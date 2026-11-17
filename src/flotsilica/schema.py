@@ -62,7 +62,7 @@ SOURCE_ROWS_SCHEMA = pa.schema([
 SOURCE_HOURS_SCHEMA = pa.schema([
     ("hour", pa.timestamp("ns")), ("hour_key", pa.int64()), ("rows", pa.int64()), ("is_partial", pa.bool_()),
     ("silica_pct", pa.float64()), ("iron_conc_pct", pa.float64()), ("feed_silica_pct", pa.float64()), ("feed_iron_pct", pa.float64()),
-    ("lab_state", pa.string()), ("feed_silica_age_h", pa.float64()), ("feed_iron_age_h", pa.float64()),
+    ("lab_state", pa.string()), ("feed_silica_age_h", pa.float64()), ("feed_iron_age_h", pa.float64()), ("feed_changes_in_hour", pa.bool_()),
     *[(name, pa.float64()) for name in AGGREGATE_COLUMNS],
 ])
 LAB_STATES: tuple[str, ...] = ("fresh", "interpolated", "held")

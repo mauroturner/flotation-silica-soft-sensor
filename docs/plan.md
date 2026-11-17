@@ -333,11 +333,14 @@ Reglas. Las de la fuente corren en `fetch_source`, una vez por huella; las de la
 | M05 | advertencia | modelo | latest | La configuración es distinta de la sellada | Todo lo calculado es `post_seal`; la evaluación de la prueba sin sello de prueba se rechaza (D18) |
 | M06 | bloqueante | modelo | latest | Entrenamiento, V1 y V2 con al menos `min_fresh_hours_per_block` horas frescas con entradas | `BlockSizeError` antes de ajustar |
 
+Notas de U05 sobre la tabla. **V24** se evalúa sobre las horas de la entrega: como V15 impide que las filas lleven columnas de laboratorio, `source_hours.parquet` (y cada `<id>.hours.parquet`) trae la columna `feed_changes_in_hour` (booleana: alguna de las dos alimentaciones tiene más de un valor entre las filas de la hora), calculada en la lectura canónica junto con las marcas de D05; el manifiesto del interim pasa a la versión 2 y no llega al almacén (`lab_hours` no la guarda). **V13** compara las filas, las horas, el SHA-256 de cada archivo y el de la entrega, que es el SHA-256 de `<sha256 de las filas>
+<sha256 de las horas>`. **I02** cuenta las horas con alguna de las dos alimentaciones sin cambio desde hace 24 h o más, sumando las ya cargadas y las de la entrega, y publica además cada cuenta por separado. **I03** cuenta, por sensor, las horas con desviación estándar muestral exactamente 0. Los ejemplos de una regla son horas e identificadores de fila, nunca un valor medido. Las reglas de las horas llevan `rows_affected` (las filas de esas horas) y `hours_affected`.
+
 Las cifras de V22 y V23 son las de la comprobación del planificador (entrenamiento, V1 y V2; requerimientos, sección 4); el total del archivo sale de la corrida real.
 
 `ValidationReport` como el del proyecto 04 (con `not_evaluated` y hasta 5 ejemplos por regla, como horas), con `hours_affected` y `aggregation` en cada `RuleResult`.
 
-Entregas (`deliveries.py`): el plan sale de la configuración: el lanzamiento con todas las horas hasta `launch_last_hour`, entregas de `cadence_hours` horas hasta `last_hour` (40 de 24 h; 4 de 240 h en el modo rápido) y el cierre. La entrega de una fila es la de su hora. Manifiesto `data/raw/deliveries/manifest.json` con versión (`{"version": 1, "entries": [...]}`), escrito a un temporal y renombrado.
+Entregas (`deliveries.py`): el plan sale de la configuración: el lanzamiento con todas las horas hasta `launch_last_hour`, entregas de `cadence_hours` horas hasta `last_hour` (40 de 24 h; 4 de 240 h en el modo rápido; la última, más corta si la cadencia no divide lo que queda) y el cierre. Identificadores: `L<fecha de launch_last_hour>`, `D<fecha de su primera hora>` (con la hora, `D2017-08-01T07`, si la cadencia no es de días enteros o la entrega no empieza a medianoche, para que un identificador no se repita) y `C<fecha de la hora siguiente a last_hour>`. Cada entrega son dos archivos, `<id>.rows.parquet` y `<id>.hours.parquet`, con las filas y las horas de su período. La entrega de una fila es la de su hora. Manifiesto `data/raw/deliveries/manifest.json` con versión (`{"version": 1, "entries": [...]}`), escrito a un temporal y renombrado.
 
 ## 7. SQL
 
@@ -746,12 +749,12 @@ def fetch_source(ctx: RunContext) -> dict
 class DeliverySpec: delivery_id: str; kind: str; first_hour: datetime | None; last_hour: datetime | None; as_of: datetime
 def delivery_plan(view: SealedConfig) -> list[DeliverySpec]
 def next_pending(manifest: Path, plan: list[DeliverySpec]) -> DeliverySpec | None
-def publish(spec: DeliverySpec, rows: pd.DataFrame, hours: pd.DataFrame, out_dir: Path) -> ManifestEntry
+def publish(spec: DeliverySpec, rows: pd.DataFrame, hours: pd.DataFrame, out_dir: Path) -> ManifestEntry   # rows y hours son las tablas canónicas: el período se elige adentro
 
 # validate.py
 class Severity(StrEnum): BLOCKING = "blocking"; WARNING = "warning"; INFO = "info"
 class Aggregation(StrEnum): SOURCE = "source"; PER_RUN = "per_run"; LATEST = "latest"
-def validate_delivery(rows, hours, spec, conn, view) -> ValidationReport
+def validate_delivery(rows, hours, spec, conn, view, *, entry, out_dir, run_key) -> ValidationReport   # entry y out_dir: el manifiesto y la carpeta de los archivos que V13 compara
 class ValidationError(RuntimeError): ...
 
 # warehouse.py

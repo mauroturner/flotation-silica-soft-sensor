@@ -234,7 +234,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: cada regla con nombre se prueba sola y se publica igual en el tablero y en el sitio.
 - **Afecta**: `validate.py`; `validation_rules.json`; AC06.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U05 (2026-11-17): V24 no se puede evaluar sobre una entrega cuyas filas no traen laboratorio (V15), así que la lectura canónica guarda por hora `feed_changes_in_hour` en `source_hours.parquet` (manifiesto del interim, versión 2); el cambio no toca el producto: V24 sigue siendo la advertencia «Alimentación que cambia dentro de la hora» y la hora usa su primera fila. Pregunta abierta para quien planifica: si prefiere otra forma de dar ese dato a la validación.
 
 ## D24 Almacén: SQLite en capas, con la llegada de cada análisis como dato
 

@@ -50,7 +50,7 @@ CHUNK_ROWS = 50_000
 MAX_HEADER_LINES = 200             # a header that has not ended by here is not the file's (V02)
 EXAMPLES = 5                       # how many failing lines a rule names
 INTERIM_MANIFEST = "interim_manifest.json"
-INTERIM_MANIFEST_VERSION = 1
+INTERIM_MANIFEST_VERSION = 2          # 2: the hours carry feed_changes_in_hour (V24)
 LOCK_NAME = "source.lock.json"
 LOCK_VERSION = 1
 ROWS_NAME = "source_rows.parquet"
@@ -348,12 +348,14 @@ def canonical(rows: pd.DataFrame, cfg: PipelineConfig) -> tuple[pd.DataFrame, pd
     """``(source_rows, source_hours)`` of the rows ``read_arff`` returned.
 
     ``source_rows`` has ``row_id``, ``hour``, ``row_in_hour`` and the 19 sensors: **no laboratory column** (D04). ``source_hours`` has one row
-    per hour with the four laboratory values of its first row, whether it is partial, the mark of D05 and the age of the feed, and the
-    aggregates of the sensors. Whether an hour is a ramp is worked out here, used for its mark and dropped."""
+    per hour with the four laboratory values of its first row, whether it is partial, the mark of D05, the age of the feed, whether the feed changes
+    between the rows of the hour (V24: the rows carry no laboratory column) and the aggregates of the sensors. Whether an hour is a ramp is worked out here, used for its mark and dropped."""
     source_rows = rows[["row_id", "hour", "row_in_hour", *SENSORS]].reset_index(drop=True)
     aggregates = aggregate_rows(rows)
     first = rows.loc[rows["row_in_hour"] == 1, ["hour", *LAB_COLUMNS]].set_index("hour").loc[aggregates["hour"]].reset_index()
     is_ramp = rows.groupby("hour")["silica_pct"].nunique().gt(1)
+    # V24: the delivered rows carry no laboratory column (V15), so the one fact about them that the rule needs is kept per hour
+    feed_changes = rows.groupby("hour")[["feed_silica_pct", "feed_iron_pct"]].nunique().gt(1).any(axis=1).reindex(aggregates["hour"])
     states = lab_states(first[["hour", "silica_pct"]], is_ramp)
     ages = feed_age_hours(first[["hour", "feed_silica_pct", "feed_iron_pct"]])
     hours = pd.DataFrame({
@@ -361,6 +363,7 @@ def canonical(rows: pd.DataFrame, cfg: PipelineConfig) -> tuple[pd.DataFrame, pd
         "is_partial": (aggregates["rows"] < cfg.hours.rows_per_hour).to_numpy(), "silica_pct": first["silica_pct"], "iron_conc_pct": first["iron_conc_pct"],
         "feed_silica_pct": first["feed_silica_pct"], "feed_iron_pct": first["feed_iron_pct"], "lab_state": states.to_numpy(),
         "feed_silica_age_h": ages["feed_silica_age_h"], "feed_iron_age_h": ages["feed_iron_age_h"],
+        "feed_changes_in_hour": feed_changes.to_numpy(dtype=bool),
     })
     hours = pd.concat([hours, aggregates.drop(columns=["hour", "rows"])], axis=1)
     assert list(hours.columns) == SOURCE_HOURS_SCHEMA.names and list(source_rows.columns) == SOURCE_ROWS_SCHEMA.names
