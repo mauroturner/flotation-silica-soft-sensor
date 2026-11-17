@@ -111,6 +111,22 @@ def _last1(c: Candidate, rows: pd.DataFrame, last1: np.ndarray | None) -> np.nda
     return values
 
 
+def _predict_values(estimator: Any, values: np.ndarray) -> np.ndarray:
+    """``estimator.predict(values)``; a one-process forest takes its trees' mean here, the way ``RandomForestRegressor.predict`` takes it (the same sum, in the
+    order of its trees, over the same float32 matrix, divided by the number of trees: the same bytes), without the validation and the thread pool it sets up
+    on each call, which dominate the cost of the one-row matrices the scoring passes. Anything else (another family, a matrix that is not finite or does not
+    have the columns it was fitted on) goes through ``estimator.predict``, which answers or refuses as it always did."""
+    if (type(estimator) is RandomForestRegressor and estimator.n_jobs == 1 and estimator.n_outputs_ == 1 and not hasattr(estimator, "feature_names_in_")
+            and values.ndim == 2 and values.shape[1] == estimator.n_features_in_ and np.isfinite(values).all()):
+        matrix = np.asarray(values, dtype=np.float32)
+        total = np.zeros(matrix.shape[0], dtype=np.float64)
+        for tree in estimator.estimators_:
+            total += tree.predict(matrix, check_input=False)
+        total /= len(estimator.estimators_)
+        return total
+    return estimator.predict(values)
+
+
 @dataclass(frozen=True, eq=False)
 class FittedCandidate:
     """A fitted candidate: its estimator, the columns of its set (M02) and the blocks it learned from (``fitted_on``) with their number of rows."""
@@ -127,7 +143,7 @@ class FittedCandidate:
         matrix = build_matrix(rows, self.candidate.feature_set)
         if tuple(matrix.columns) != self.columns:
             raise LeakageError(f"M02: las columnas de la matriz no son las del modelo ({self.candidate.feature_set})")
-        out = np.asarray(self.estimator.predict(matrix.to_numpy(dtype="float64")), dtype="float64")
+        out = np.asarray(_predict_values(self.estimator, matrix.to_numpy(dtype="float64")), dtype="float64")
         base = _last1(self.candidate, rows, last1)
         return out if base is None else base + out
 

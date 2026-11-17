@@ -346,7 +346,20 @@ def test_the_state_of_an_analysis_must_follow_its_neighbour_in_all_three_ways(pu
 # --- the runner and the schema --------------------------------------------------------------------------------------------------
 
 
-def test_connect_sets_the_pragmas_of_the_project_and_the_runner_never_runs_a_script(tmp_path):
+def connection_keeps_a_page_cache_big_enough_for_the_rows_a_control_reads(small_store, small_canonical, quick_cfg, copy_of):
+    """Pinned by ``test_connect_sets_the_pragmas_of_the_project_and_the_runner_never_runs_a_script`` (speed unit, D33): ``connect`` sets a 64 MiB page cache
+    (the 2 MiB default made each control re-read the raw rows of the load). It is memory only: the controls answer the same with the default cache."""
+    conn = connect(copy_of(small_store))
+    assert conn.execute("PRAGMA cache_size").fetchone() == (-warehouse.CACHE_KIB,) and warehouse.CACHE_KIB == 65_536
+    params = warehouse.sql_params(small_canonical.hours["hour"].iloc[-1].to_pydatetime() + timedelta(hours=1), quick_cfg)
+    cached = [(c.check_id, c.violations, c.sample) for c in run_checks(conn, "load", params)]
+    conn.execute("PRAGMA cache_size=-2000")
+    assert [(c.check_id, c.violations, c.sample) for c in run_checks(conn, "load", params)] == cached and [c[0] for c in cached] == CHECKS
+    conn.close()
+
+
+def test_connect_sets_the_pragmas_of_the_project_and_the_runner_never_runs_a_script(tmp_path, small_store, small_canonical, quick_cfg, copy_of):
+    connection_keeps_a_page_cache_big_enough_for_the_rows_a_control_reads(small_store, small_canonical, quick_cfg, copy_of)
     conn = connect(tmp_path / "sub" / "w.sqlite")
     assert conn.isolation_level is None
     assert conn.execute("PRAGMA journal_mode").fetchone() == ("delete",) and conn.execute("PRAGMA synchronous").fetchone() == (2,)
@@ -371,7 +384,11 @@ def test_applying_the_schema_again_keeps_the_data_and_a_table_with_other_columns
     assert {"deliveries", "raw_rows", "lab_hours", "hour_aggregates", "pipeline_runs", "validation_results", "hour_blocks"} <= tables
     conn.execute("INSERT INTO deliveries VALUES ('L1', 'launch', NULL, NULL, '2017-08-01 00:00:00', 0, 0, ?, 'loaded', 'r1')", ("a" * 64,))
     apply_schema(conn)
-    assert conn.execute("SELECT COUNT(*) FROM deliveries").fetchone() == (1,)
+    assert conn.execute("SELECT COUNT(*) FROM deliveries").fetchone() == (1,) and not conn.in_transaction
+    conn.execute("BEGIN")          # speed unit (D33): inside the caller's transaction it joins it: it neither commits nor ends it
+    apply_schema(conn)
+    assert conn.in_transaction
+    conn.execute("ROLLBACK")
     with pytest.raises(ValueError, match="grupo de controles desconocido"):
         run_checks(conn, "nonsense")
     conn.close()
@@ -394,7 +411,14 @@ def test_a_table_with_an_unexpected_or_a_retyped_column_is_refused_naming_it(tmp
     other.execute("CREATE TABLE hour_blocks (hour TEXT PRIMARY KEY, block INTEGER)")
     with pytest.raises(SchemaDriftError, match=r"tienen otro tipo las columnas \['block'\]"):
         apply_schema(other)
+    assert not other.in_transaction        # speed unit (D33): the error ends the transaction apply_schema opened
     other.close()
+    partial = connect(tmp_path / "partial.sqlite")
+    partial.execute("CREATE TABLE hour_blocks (hour TEXT PRIMARY KEY, block INTEGER)")      # the drift is in the second file: the tables of the first are created, as in autocommit
+    with pytest.raises(SchemaDriftError):
+        apply_schema(partial)
+    assert not partial.in_transaction and {r[0] for r in partial.execute("SELECT name FROM sqlite_master WHERE type = 'table'")} >= {"deliveries", "hour_blocks"}
+    partial.close()
 
 
 def test_the_aggregate_control_names_every_sensor_with_its_three_columns():

@@ -12,7 +12,7 @@ import pandas as pd
 import pytest
 
 from flotsilica import model
-from flotsilica.features import HourTables, LeakageError, design
+from flotsilica.features import HourTables, LeakageError, build_matrix, design
 from flotsilica.model import (
     BlockSizeError,
     Candidate,
@@ -161,6 +161,10 @@ def test_fitting_the_same_data_twice_gives_identical_estimates(blocks, view):
     for c in (Candidate("rf", "fSL", "change", 3), Candidate("hgb", "fSL", "level", 20)):
         one, again = fit_on_train(blocks, c, quick), fit_on_train(blocks, c, quick)
         assert np.array_equal(one.predict(probe.X, probe.last1), again.predict(probe.X, probe.last1))
+        # speed unit (D33): what the candidate predicts is, to the bytes, what its scikit-learn estimator predicts on the same matrix (a forest through the shortcut)
+        direct = np.asarray(one.estimator.predict(build_matrix(probe.X, c.feature_set).to_numpy(dtype="float64")), dtype="float64")
+        assert one.predict(probe.X, probe.last1).tobytes() == (probe.last1 + direct if c.target == "change" else direct).tobytes()
+    one_process_forest_shortcut_gives_the_bytes_of_scikit_learn()
 
 
 def test_a_block_with_too_few_fresh_hours_is_its_own_error_before_any_fit(small_canonical, quick_cfg, monkeypatch):
@@ -237,3 +241,41 @@ def test_the_blocks_of_the_launch_never_read_what_is_after_v2_and_refuse_the_tes
             pd.testing.assert_frame_equal(again[horizon][name].X, reference[horizon][name].X, check_exact=True)
             assert np.array_equal(again[horizon][name].y, reference[horizon][name].y)
     assert tuple(model.LAUNCH_BLOCKS) == ("train", "valid_v1", "valid_v2") and "test" not in model.LAUNCH_BLOCKS
+
+
+def one_process_forest_shortcut_gives_the_bytes_of_scikit_learn():
+    """Pinned by ``test_fitting_the_same_data_twice_gives_identical_estimates`` (speed unit, D33): ``FittedCandidate.predict`` takes the mean of the trees of a one-process forest itself, without the validation and the thread pool that
+    ``RandomForestRegressor.predict`` sets up for each call. The bytes are those of scikit-learn for one row and for many, and anything the shortcut does not
+    cover (another family, a forest in threads, a value that is not finite, a matrix of another width) still goes through ``estimator.predict``."""
+    from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(150, 9))
+    y = X[:, 0] * 3 - X[:, 4] + rng.normal(size=150)
+    probe = rng.normal(size=(60, 9))
+    for leaf, trees, features in ((1, 20, 1.0), (5, 7, 0.4), (20, 1, 0.7)):
+        forest = RandomForestRegressor(n_estimators=trees, max_features=features, min_samples_leaf=leaf, n_jobs=1, random_state=3).fit(X, y)
+        assert model._predict_values(forest, probe).tobytes() == forest.predict(probe).tobytes()
+        assert all(model._predict_values(forest, probe[k:k + 1]).tobytes() == forest.predict(probe[k:k + 1]).tobytes() for k in range(len(probe)))
+    forest = RandomForestRegressor(n_estimators=20, min_samples_leaf=3, n_jobs=1, random_state=3).fit(X, y)
+    # the cases the shortcut leaves alone answer or refuse as scikit-learn does
+    threaded = RandomForestRegressor(n_estimators=20, min_samples_leaf=3, n_jobs=2, random_state=3).fit(X, y)
+    asked = []
+    original = threaded.predict
+    threaded.predict = lambda matrix: asked.append(1) or original(matrix)       # its threads add in any order: only that it is scikit-learn that answers is pinned
+    assert np.allclose(model._predict_values(threaded, probe), original(probe), rtol=0, atol=1e-12) and asked == [1]
+    boosted = HistGradientBoostingRegressor(max_iter=20, early_stopping=False, random_state=3).fit(X, y)
+    assert model._predict_values(boosted, probe).tobytes() == boosted.predict(probe).tobytes()
+    holes = probe.copy()
+    holes[3, 2] = np.nan
+    assert model._predict_values(forest, holes).tobytes() == forest.predict(holes).tobytes()
+    infinite = probe.copy()
+    infinite[3, 2] = np.inf
+    with pytest.raises(ValueError, match="infinity"):
+        model._predict_values(forest, infinite)
+    with pytest.raises(ValueError, match="features"):
+        model._predict_values(forest, probe[:, :8])
+    # and a forest fitted on a frame keeps its column names, which scikit-learn checks: it is not the shortcut's
+    named = RandomForestRegressor(n_estimators=5, n_jobs=1, random_state=3).fit(pd.DataFrame(X, columns=list("abcdefghi")), y)
+    with pytest.warns(UserWarning, match="valid feature names"):
+        assert model._predict_values(named, probe).tobytes() == named.predict(probe).tobytes()

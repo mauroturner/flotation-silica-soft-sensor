@@ -63,6 +63,7 @@ RUNBOOK = "runbook R1 (docs/runbook.md)"
 _ATTRIBUTE = re.compile(r'@ATTRIBUTE (?:"([^"]+)"|([^\s"]+)) STRING')
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:00:00")
 _NUMBER = re.compile(r"-?[0-9]+(,[0-9]+)?")
+_NUMBER_AT_LINE_END = re.compile(r"-?[0-9]+(?:,[0-9]+)?(?:\n|\Z)")   # a field of the form of _NUMBER and the line break (or the end of the text) after it
 # A field is between apostrophes (it may hold the decimal comma) or, as the real file writes a value that has no fractional part, a bare integer
 # (``390``, not ``'390'``): 28,124 of the 560,333 rows before the test months have one to three of them. Nothing else is a field.
 _FIELD = re.compile(r"'[^']*'|-?[0-9]+")
@@ -232,6 +233,20 @@ class _State:
     carry_count: int = 0
 
 
+def _numbers_if_valid(numbers: pd.DataFrame) -> dict[str, np.ndarray] | None:
+    """The numeric columns of a chunk as float64 when every field has the form of ``_NUMBER``, or None when any does not (then the caller finds which one with the
+    exact pattern, field by field). A column is checked at once: its fields joined by line breaks, none of them holding one, leave nothing once the fields of
+    that form are removed with the break after each."""
+    parsed = {}
+    for column in NUMERIC_COLUMNS:
+        values = numbers[column].tolist()
+        text = "\n".join(values)
+        if not text or text.count("\n") != len(values) - 1 or text.endswith("\n") or _NUMBER_AT_LINE_END.sub("", text):
+            return None
+        parsed[column] = np.array(text.replace(",", ".").split("\n"), dtype="float64")
+    return parsed
+
+
 def _flush(chunk: list[str], first_line: int, state: _State, cfg: PipelineConfig) -> pd.DataFrame:
     names = cfg.source.attributes
     fields_per_line = len(COLUMNS)
@@ -259,11 +274,14 @@ def _flush(chunk: list[str], first_line: int, state: _State, cfg: PipelineConfig
 
     frame = pd.DataFrame(parts, columns=list(COLUMNS))
     numbers = frame[list(NUMERIC_COLUMNS)]
-    invalid_numbers = ~numbers.apply(lambda column: column.str.fullmatch(_NUMBER)).fillna(False).astype(bool)
+    parsed = _numbers_if_valid(numbers)
+    invalid_numbers = None if parsed is not None else ~numbers.apply(lambda column: column.str.fullmatch(_NUMBER)).fillna(False).astype(bool)
     date_shape = frame["hour"].str.fullmatch(_DATE).fillna(False).astype(bool)
     hours = pd.to_datetime(frame["hour"].where(date_shape), format="%Y-%m-%d %H:%M:%S", errors="coerce")
     invalid_date = hours.isna()
-    if invalid_date.any() or invalid_numbers.to_numpy().any():
+    if invalid_date.any() or (invalid_numbers is not None and invalid_numbers.to_numpy().any()):
+        if invalid_numbers is None:
+            invalid_numbers = pd.DataFrame(False, index=numbers.index, columns=list(NUMERIC_COLUMNS))
         wrong = pd.concat([invalid_date.rename("hour"), invalid_numbers], axis=1)
         positions = np.argwhere(wrong.to_numpy())
         positions = positions[np.lexsort((positions[:, 1], positions[:, 0]))][:EXAMPLES]
@@ -297,7 +315,7 @@ def _flush(chunk: list[str], first_line: int, state: _State, cfg: PipelineConfig
 
     out = pd.DataFrame({"row_id": np.arange(state.rows + 1, state.rows + 1 + len(frame), dtype="int64"), "hour": hours.to_numpy()})
     for column in NUMERIC_COLUMNS:
-        out[column] = numbers[column].str.replace(",", ".", regex=False).astype("float64").to_numpy()
+        out[column] = parsed[column] if parsed is not None else numbers[column].str.replace(",", ".", regex=False).astype("float64").to_numpy()
     state.rows += len(frame)
     return out
 

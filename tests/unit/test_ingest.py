@@ -254,3 +254,29 @@ def test_the_two_forms_of_line_are_read_into_the_same_fields(quick_cfg, tmp_path
     assert _fields(line(F5="390")) == _fields(bare_line({5: "390"}))
     assert _fields("") is None and _fields("'") is None and _fields(line()[:-1]) is None and _fields("garbage") is None
     assert _fields(line() + ",") is None and _fields("," + line()) is None
+    numbers_of_a_chunk_are_checked_by_column_with_the_answer_of_the_pattern_field_by_field()
+
+
+def numbers_of_a_chunk_are_checked_by_column_with_the_answer_of_the_pattern_field_by_field():
+    """Pinned by ``test_the_two_forms_of_line_are_read_into_the_same_fields`` (speed unit, D33): ``_numbers_if_valid`` takes a column at once (its fields joined by line breaks) and returns the float64 values the replace-and-convert of each
+    field gives, or None as soon as the pattern ``-?[0-9]+(,[0-9]+)?`` refuses a field of any column, so the exact reader finds which one."""
+    import random
+
+    from flotsilica.ingest import _NUMBER, NUMERIC_COLUMNS, _numbers_if_valid
+
+    def frame(texts: list[str]) -> pd.DataFrame:
+        return pd.DataFrame({column: texts for column in NUMERIC_COLUMNS})
+
+    rng = random.Random(4)
+    for alphabet in ("0123456789-,", "01-,\n", "09,-. eE+\r\n"):
+        for _ in range(400):
+            texts = ["".join(rng.choice(alphabet) for _ in range(rng.randint(0, 5))) for _ in range(rng.randint(1, 4))]
+            parsed = _numbers_if_valid(frame(texts))
+            valid = all(_NUMBER.fullmatch(text) for text in texts)
+            assert (parsed is not None) == valid, texts
+            if parsed is not None:
+                expected = pd.Series(texts).str.replace(",", ".", regex=False).astype("float64").to_numpy()
+                assert all(parsed[column].tobytes() == expected.tobytes() for column in NUMERIC_COLUMNS), texts
+    mixed = frame(["12", "-0,5", "0007,25", "123456789,123456"])
+    mixed.loc[2, NUMERIC_COLUMNS[-1]] = "1e3"           # one bad field in the last column refuses the whole chunk
+    assert _numbers_if_valid(mixed) is None and _numbers_if_valid(frame([])) is None

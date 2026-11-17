@@ -261,12 +261,19 @@ def _record(ctx: RunContext, **fields) -> None:
 
 def _store_validation(conn: sqlite3.Connection, report: ValidationReport) -> None:
     """The run's rule results in ``validation_results`` (their examples are hours and identifiers of rows, never a value measured in the plant)."""
-    conn.execute("DELETE FROM validation_results WHERE run_key = ?", (report.run_key,))
-    conn.executemany(
-        "INSERT INTO validation_results (run_key, rule_id, name_es, severity, scope, aggregation, passed, rows_affected, hours_affected, examples_json) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [(report.run_key, r.rule_id, r.name_es, r.severity.value, r.scope, r.aggregation.value, int(r.passed), int(r.rows_affected), int(r.hours_affected),
-          json.dumps(r.examples, ensure_ascii=False, default=str)) for r in report.results])
+    own = not conn.in_transaction     # in autocommit each row would be a commit of its own (a sync of the file each); the transaction is committed whatever happens
+    if own:
+        conn.execute("BEGIN")
+    try:
+        conn.execute("DELETE FROM validation_results WHERE run_key = ?", (report.run_key,))
+        conn.executemany(
+            "INSERT INTO validation_results (run_key, rule_id, name_es, severity, scope, aggregation, passed, rows_affected, hours_affected, examples_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [(report.run_key, r.rule_id, r.name_es, r.severity.value, r.scope, r.aggregation.value, int(r.passed), int(r.rows_affected), int(r.hours_affected),
+              json.dumps(r.examples, ensure_ascii=False, default=str)) for r in report.results])
+    finally:
+        if own and conn.in_transaction:
+            conn.execute("COMMIT")
 
 
 def _loaded_by(conn: sqlite3.Connection, delivery_id: str) -> str | None:

@@ -38,6 +38,7 @@ CHECK_GROUPS = ("load", "model")
 MART_GROUPS = ("powerbi",)
 SAMPLE_LIMIT = 5
 BUSY_TIMEOUT_MS = 30_000   # an overlapping writer waits this long for the write lock before failing (runbook R8)
+CACHE_KIB = 65_536         # the page cache of a connection (negative ``cache_size`` is in KiB): the 2 MB default is smaller than the rows a load control reads, and each control re-read them
 STAGING = ("staging/stg_hours.sql",)
 SPLIT_KEYS = ("train_first", "train_last", "v1_first", "v1_last", "v2_first", "v2_last", "test_first", "test_last")
 RAW_COLUMNS = ("row_id", "delivery_id", "hour", "row_in_hour", *SENSORS)
@@ -116,6 +117,7 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=DELETE")
     conn.execute("PRAGMA synchronous=FULL")
     conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute(f"PRAGMA cache_size=-{CACHE_KIB}")   # memory only: nothing in the file or in a result depends on it
     return conn
 
 
@@ -210,10 +212,21 @@ def _check_no_drift(conn: sqlite3.Connection, path: Path) -> None:
 
 def apply_schema(conn: sqlite3.Connection) -> None:
     """Create the tables of ``sql/schema`` that do not exist yet (idempotent; keeps the data). A table that exists with other columns than its
-    file declares is not migrated: ``SchemaDriftError`` names it and its columns."""
-    for path in sorted((SQL_DIR / "schema").glob("*.sql")):
-        _check_no_drift(conn, path)
-        run_sql_file(conn, path)
+    file declares is not migrated: ``SchemaDriftError`` names it and its columns.
+
+    Called in autocommit mode, the statements run in one transaction of their own, which is committed whatever happens (what an error leaves is what each statement
+    before it did, as in autocommit), because a statement outside a transaction takes and gives back the file's lock by itself, which is most of the cost of a no-op
+    ``CREATE ... IF NOT EXISTS`` when everything exists. Called inside the caller's transaction, it joins it, as it always did."""
+    own = not conn.in_transaction
+    if own:
+        conn.execute("BEGIN")
+    try:
+        for path in sorted((SQL_DIR / "schema").glob("*.sql")):
+            _check_no_drift(conn, path)
+            run_sql_file(conn, path)
+    finally:
+        if own and conn.in_transaction:
+            conn.execute("COMMIT")
 
 
 # --- marts -----------------------------------------------------------------------------------------------------------------
