@@ -229,3 +229,50 @@ def small_store(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick
     finally:
         conn.close()
     return path
+
+
+# --- the launch of each signal fixture (U09) ---------------------------------------------------------------------------------------------
+
+# The planted signal of ``sensor_signal`` (beta 0.7 on the sensor of the same hour) is so strong that an honest model reaches 0.386 against the 0.824
+# of the persistence, which is under the default tripwire of 0.5 x the persistence (M01): the tripwire is made for the real file, where an honest model stays
+# near the persistence (D09). The positive control relaunches with a tripwire of 0.2, which a model that read the target (an error near 0) still crosses.
+CONTROL_TRIPWIRE_RATIOS = {"sensor_signal": 0.2}
+
+
+@pytest.fixture(scope="session")
+def signal_tables(signal_arff, quick_cfg):
+    """``signal_tables(signal)``: the ``HourTables`` of the signal fixture (read once per signal), for the controls."""
+    from flotsilica.features import HourTables
+    from flotsilica.ingest import canonical as build
+    from flotsilica.ingest import read_arff
+
+    built: dict[str, object] = {}
+
+    def tables(signal: str):
+        if signal not in built:
+            read, _report = read_arff(signal_arff(signal), quick_cfg)
+            _rows, hours = build(read, quick_cfg)
+            built[signal] = HourTables.from_hours(hours, quick_cfg)
+        return built[signal]
+
+    return tables
+
+
+@pytest.fixture(scope="session")
+def signal_launch(signal_tables, quick_cfg):
+    """``signal_launch(signal)``: ``(view, LaunchFit)`` of the learning of the launch (``model.fit_launch``) on the signal fixture at the horizon 0, built once
+    per signal. Only the model part: the sensitivities and the seal come in later units."""
+    import dataclasses
+
+    from flotsilica.model import fit_launch
+
+    built: dict[str, tuple[object, object]] = {}
+
+    def launch(signal: str):
+        if signal not in built:
+            criteria = dataclasses.replace(quick_cfg.criteria, leak_tripwire_ratio=CONTROL_TRIPWIRE_RATIOS.get(signal, quick_cfg.criteria.leak_tripwire_ratio))
+            view = dataclasses.replace(quick_cfg, evaluation=dataclasses.replace(quick_cfg.evaluation, horizons=(0,)), criteria=criteria)
+            built[signal] = (view, fit_launch(signal_tables(signal), view))
+        return built[signal]
+
+    return launch
