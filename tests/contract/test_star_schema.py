@@ -15,7 +15,7 @@ import pytest
 
 from flotsilica import export
 from flotsilica.dashboard.semantic_model import MODEL, arrow_schema
-from flotsilica.export import METADATA_KEYS, STAR_MANIFEST, export_star_schema, verify_star_schema
+from flotsilica.export import METADATA_KEYS, STAR_MANIFEST, export_run_table, export_star_schema, verify_star_schema
 from flotsilica.ingest import ATTRIBUTION
 from flotsilica.registry import sealed_view
 from flotsilica.scoring import RunMeta
@@ -431,5 +431,53 @@ def test_the_marts_are_rebuilt_only_inside_a_transaction_and_for_a_known_group(s
         with pytest.raises(ValueError, match="grupo de marts desconocido"):
             rebuild_marts(conn, "ops")
         conn.execute("ROLLBACK")
+    finally:
+        conn.close()
+
+
+# --- the run table, rewritten alone when a run closes (U17; plan, sections 3 and 22) --------------------------------------------------------
+
+
+def test_the_run_table_is_rewritten_alone_and_its_entry_in_the_manifest_with_it(star_files, tmp_path):
+    """Closing a run (or a failure, or a run with no delivery) rewrites ``dim_pipeline_run.parquet`` from ``pipeline_runs`` and its line of ``manifest.json`` and nothing else: every other
+    file keeps its bytes, the set still verifies and the file carries the metadata of the run."""
+    star = star_files
+    h = copy_history(star.history, tmp_path / "h")
+    out = tmp_path / "powerbi"
+    shutil.copytree(star.out_dir, out)
+    conn = connect(h.paths.db)
+    try:
+        conn.execute("UPDATE pipeline_runs SET status = 'failed', message = 'score: ValueError: boom' WHERE run_key = ?", (star.run.run_key,))
+        path = export_run_table(conn, out, MODEL, star.run, h.sealed)
+    finally:
+        conn.close()
+    assert path == out / "dim_pipeline_run.parquet" and verify_star_schema(out) == []
+    changed = {f.name for f in star.out_dir.iterdir() if (out / f.name).read_bytes() != f.read_bytes()}
+    assert changed == {"dim_pipeline_run.parquet", STAR_MANIFEST}
+    table = pq.read_table(path)
+    assert {r["run_key"]: (r["status"], r["message"]) for r in table.to_pylist()}[star.run.run_key] == ("failed", "score: ValueError: boom")
+    assert table.schema.metadata[b"flotsilica.run_key"].decode() == star.run.run_key and table.schema.equals(arrow_schema(MODEL.table("dim_pipeline_run")))
+    before, after = (json.loads((d / STAR_MANIFEST).read_text(encoding="utf-8")) for d in (star.out_dir, out))
+    assert {k: v for k, v in before.items() if k != "files"} == {k: v for k, v in after.items() if k != "files"} and [f["name"] for f in before["files"]] == [f["name"] for f in after["files"]]
+
+
+def test_a_run_table_is_not_rewritten_over_a_set_that_does_not_verify(star_files, tmp_path, caplog):
+    """R4-001 of project 04: over a folder with no manifest, or whose files are not the manifest's, nothing is created or changed: the call says why in the log, naming the run, and
+    returns None."""
+    star = star_files
+    h = copy_history(star.history, tmp_path / "h")
+    conn = connect(h.paths.db)
+    try:
+        for name, spoil in (("no manifest", lambda folder: (folder / STAR_MANIFEST).unlink()), ("changed file", lambda folder: (folder / "dim_hour.parquet").write_bytes(b"changed"))):
+            folder = tmp_path / name.replace(" ", "_")
+            shutil.copytree(star.out_dir, folder)
+            spoil(folder)
+            before = {f.name: f.read_bytes() for f in folder.iterdir()}
+            with caplog.at_level("WARNING", logger="flotsilica.export"):
+                assert export_run_table(conn, folder, MODEL, star.run, h.sealed) is None
+            assert {f.name: f.read_bytes() for f in folder.iterdir()} == before, name
+            assert any(star.run.run_key in r.getMessage() and "not rewritten" in r.getMessage() for r in caplog.records), name
+        empty = tmp_path / "empty"
+        assert export_run_table(conn, empty, MODEL, star.run, h.sealed) is None and not empty.exists()
     finally:
         conn.close()

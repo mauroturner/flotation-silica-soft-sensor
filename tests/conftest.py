@@ -9,6 +9,7 @@ the rendered design and the figures) are added by the unit that writes the code 
 from __future__ import annotations
 
 import gc
+import json
 import shutil
 import types
 from collections.abc import Callable
@@ -386,3 +387,71 @@ def figures_written(tmp_path_factory: pytest.TempPathFactory, site_files):
     (folder / "latency.png").write_bytes(b"an earlier figure")
     paths = write_figures(site_files.out_dir, folder)
     return folder, paths, {p.name: p.read_bytes() for p in paths}
+
+
+# --- the flow of the small fixture, task by task (U17) ----------------------------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def pipeline_launched(tmp_path_factory: pytest.TempPathFactory, quick_cfg, small_arff):
+    """The launch run of the flow over the small fixture, every task of it (``tests/fixtures/pipeline_state.py``): built once; a test that writes works on ``copy_state`` of it."""
+    from flotsilica import pipeline
+    from tests.fixtures.pipeline_state import state_of
+
+    state = state_of(tmp_path_factory.mktemp("pipeline_launched") / "state", quick_cfg, small_arff)
+    state.results = pipeline.run_all(state.cfg, run_key="launch")
+    return state
+
+
+@pytest.fixture(scope="session")
+def pipeline_replayed(tmp_path_factory: pytest.TempPathFactory, pipeline_launched, quick_cfg):
+    """The rest of the plan after the launch, built once from a copy of ``pipeline_launched``: the daily delivery, whose close stops at the HTML the first time (``failed``) and is
+    repeated from ``report``; then the close of the plan, by ``replay``; then a run with no delivery left. ``events`` is what the closing of each run wrote, in order, with the state
+    of the run in SQLite and of its delivery at that moment: ``(step, run_status, delivery_status, run_key)``; ``stopped`` is what the run that failed left (its status in the state
+    file, in SQLite and in the run table, the status of its delivery and the checks of the star set); ``before_idle`` is ``published_digest`` before the run with no delivery."""
+    import pyarrow.parquet as pq
+
+    from flotsilica import pipeline
+    from flotsilica.deliveries import MANIFEST_NAME, read_manifest
+    from flotsilica.export import verify_star_schema
+    from tests.fixtures.pipeline_state import DAILY_ID, copy_state, published_digest, query, runs_of
+
+    state = copy_state(pipeline_launched, tmp_path_factory.mktemp("pipeline_replayed") / "state", quick_cfg)
+    cfg, events = state.cfg, []
+    manifest = Path(cfg.paths.raw_dir) / "deliveries" / MANIFEST_NAME
+
+    def watch(name: str, step: str, run_of, delivery_of):
+        real = getattr(pipeline, name)
+
+        def spy(*args, **kwargs):
+            run_key, delivery_id = run_of(*args), delivery_of(*args)
+            status = query(cfg, "SELECT status FROM pipeline_runs WHERE run_key = ?", (run_key,))
+            delivery = [e.status for e in read_manifest(manifest) if e.delivery_id == delivery_id]
+            events.append((step, status[0][0] if status else None, delivery[0] if delivery else None, run_key))
+            if name == "render_design" and failing and status == [("ok",)]:
+                failing.pop()
+                raise OSError("no space left on the device")
+            return real(*args, **kwargs)
+
+        return spy
+
+    failing = [True]
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(pipeline, "export_run_table", watch("export_run_table", "run_table", lambda *a: a[3].run_key, lambda *a: a[3].delivery_id))
+        patch.setattr(pipeline, "export_summary", watch("export_summary", "summary", lambda *a: a[2].run_key, lambda *a: a[2].delivery_id))
+        patch.setattr(pipeline, "render_design", watch("render_design", "html", lambda *a: a[3].run_key, lambda *a: a[3].delivery_id))
+        patch.setattr(pipeline, "mark_delivery", watch("mark_delivery", "delivery_marked", lambda *a: a[3], lambda *a: a[1]))
+        with pytest.raises(OSError, match="no space left"):
+            pipeline.replay(cfg, until=DAILY_ID)
+        [(failed_key, _status)] = [(k, s) for k, s in runs_of(cfg).items() if k != "launch"]
+        state.failed_key = failed_key
+        state.stopped = types.SimpleNamespace(
+            state_status=json.loads((Path(cfg.paths.interim_dir) / "runs" / f"{failed_key}.json").read_text(encoding="utf-8"))["status"], sqlite_status=runs_of(cfg)[failed_key],
+            table_status={r["run_key"]: r["status"] for r in pq.read_table(Path(cfg.paths.outputs_dir) / "dim_pipeline_run.parquet").to_pylist()}[failed_key],
+            delivery_status={e.delivery_id: e.status for e in read_manifest(manifest)}[DAILY_ID], star_problems=verify_star_schema(cfg.paths.outputs_dir))
+        pipeline.run_all(cfg, start="report", run_key=failed_key)
+        pipeline.replay(cfg)
+    state.events, state.before_idle = events, published_digest(cfg)
+    state.idle = pipeline.run_all(cfg, run_key="idle")
+    state.runs = runs_of(cfg)
+    return state

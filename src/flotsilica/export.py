@@ -32,7 +32,7 @@ from flotsilica.ingest import ATTRIBUTION
 from flotsilica.registry import read_registry, read_seal
 from flotsilica.schema import ATTRIBUTES, SENSORS
 from flotsilica.scoring import RunMeta
-from flotsilica.warehouse import _fail_on, apply_schema, rebuild_marts, run_checks, sql_params
+from flotsilica.warehouse import SQL_DIR, _fail_on, apply_schema, rebuild_marts, run_checks, run_sql_file, sql_params
 
 logger = logging.getLogger(__name__)
 
@@ -185,3 +185,38 @@ def export_star_schema(conn: sqlite3.Connection, out_dir: Path, model: SemanticM
     write_atomic(out_dir / STAR_MANIFEST, _manifest_text(meta, files))
     logger.info("star model at %s: %d files in %s", run.as_of, len(paths), out_dir)
     return paths
+
+
+RUN_TABLE = "dim_pipeline_run"
+RUN_TABLE_MART = "mart_07_dim_pipeline_run.sql"
+
+
+def export_run_table(conn: sqlite3.Connection, out_dir: Path, model: SemanticModel, run: RunMeta, view: Any) -> Path | None:
+    """Rewrite only ``dim_pipeline_run.parquet`` from ``pipeline_runs`` and its line of the folder's manifest: what closing a run, a failure or a run with no delivery changes
+    (plan, sections 3 and 22). Nothing is created that was not there: without an exported set that verifies against its manifest it logs a warning naming the run and the
+    reason and returns None, and every file keeps its bytes (a set with a file of another export would otherwise look whole). The other files, and the manifest's own header, are
+    not touched."""
+    out_dir = Path(out_dir)
+    manifest_path = out_dir / STAR_MANIFEST
+    problems = ["there is no manifest.json: nothing was exported here"] if not manifest_path.is_file() else verify_star_schema(out_dir)
+    if problems:
+        logger.warning("run table of run %s not rewritten: the exported set does not match its manifest, so every file is kept as it is: %s", run.run_key, "; ".join(problems))
+        return None
+    table = model.table(RUN_TABLE)
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        run_sql_file(conn, SQL_DIR / "marts" / "powerbi" / RUN_TABLE_MART)
+        data = _serialize(conn, table, metadata(run, view))
+        conn.execute("COMMIT")
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise
+    path = write_atomic(out_dir / f"{RUN_TABLE}.parquet", data)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for entry in manifest["files"]:
+        if entry["name"] == path.name:
+            entry.update(bytes=len(data), sha256=hashlib.sha256(data).hexdigest())
+    write_atomic(manifest_path, json.dumps(manifest, ensure_ascii=False, sort_keys=True, indent=1) + "\n")
+    logger.info("run table rewritten: %s (%d bytes)", path.name, len(data))
+    return path
