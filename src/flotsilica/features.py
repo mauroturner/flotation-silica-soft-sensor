@@ -188,31 +188,47 @@ def inputs_at(conn: sqlite3.Connection, t: datetime, view: Any) -> IssueInputs:
 # --- the row of features -----------------------------------------------------------------------------------------------------------
 
 
+_FEATURE_INDEX = pd.Index(FEATURE_COLUMNS)
+_SENSOR_INDEX = pd.Index(SENSOR_COLUMNS)
+_FEED_INDEX = pd.Index(FEED_FEATURE_COLUMNS)
+_POSITION = {name: k for k, name in enumerate(FEATURE_COLUMNS)}
+_AGGREGATES = slice(0, len(AGGREGATE_COLUMNS))
+_FEED = slice(len(FEATURE_COLUMNS) - len(FEED_FEATURE_COLUMNS), len(FEATURE_COLUMNS))
+
+
+def _row_values(inputs: IssueInputs, view: Any) -> np.ndarray:
+    """The 67 values of ``feature_row`` as an array in the order of ``FEATURE_COLUMNS`` (``design`` stacks these without making a Series for each hour)."""
+    lab_names = _lab_names(view)
+    values = np.full(len(FEATURE_COLUMNS), np.nan)
+    sensors = inputs.sensors
+    if sensors is not None and sensors["rows"] >= view.hours.min_rows_per_hour:
+        # the producers of ``IssueInputs`` give the columns in the order of ``SENSOR_COLUMNS``: then the aggregates are the array without its first value
+        taken = sensors.to_numpy(dtype="float64")[1:] if sensors.index.equals(_SENSOR_INDEX) else sensors[list(AGGREGATE_COLUMNS)].to_numpy(dtype="float64")
+        values[_AGGREGATES] = taken
+    known = lab_known_at(inputs.lab_history, inputs.issue_at)
+    if len(known) >= view.features.min_fresh_history:
+        silica = known["silica_pct"].to_numpy(dtype="float64")
+        for k in range(1, view.features.lab_last + 1):
+            if len(silica) >= k:
+                values[_POSITION[f"lab_last{k}"]] = silica[-k]
+        for m in view.features.lab_means:
+            if len(silica) >= m:
+                values[_POSITION[f"lab_mean{m}"]] = float(np.mean(silica[-m:]))
+        newest = known["sample_hour"].iloc[-1]
+        values[_POSITION[lab_names[-1]]] = (pd.Timestamp(inputs.issue_at) - timedelta(hours=view.lab.latency_hours) - newest) / HOUR
+    if inputs.feed is not None:
+        values[_FEED] = (inputs.feed.to_numpy(dtype="float64") if inputs.feed.index.equals(_FEED_INDEX)
+                         else inputs.feed[list(FEED_FEATURE_COLUMNS)].to_numpy(dtype="float64"))
+    return values
+
+
 def feature_row(inputs: IssueInputs, view: Any) -> pd.Series:
     """The 67 columns of ``FEATURE_COLUMNS`` at the instant of `inputs`; the block of an input that is missing is NaN (see ``missing_inputs``).
 
     The sensor block is the 57 aggregates of the hour that closed, if it has ``min_rows_per_hour`` rows; the laboratory block is the three latest
     fresh analyses that have arrived, the means of the latest 6 and 24 and the age of the latest, ``(issue_at - latency) - sample hour``, in hours,
     if at least ``min_fresh_history`` have arrived; the feed block is the feed of the latest hour whose analysis has arrived."""
-    lab_names = _lab_names(view)
-    values = pd.Series(np.nan, index=list(FEATURE_COLUMNS), dtype="float64")
-    sensors = inputs.sensors
-    if sensors is not None and sensors["rows"] >= view.hours.min_rows_per_hour:
-        values[list(AGGREGATE_COLUMNS)] = sensors[list(AGGREGATE_COLUMNS)].to_numpy(dtype="float64")
-    known = lab_known_at(inputs.lab_history, inputs.issue_at)
-    if len(known) >= view.features.min_fresh_history:
-        silica = known["silica_pct"].to_numpy(dtype="float64")
-        for k in range(1, view.features.lab_last + 1):
-            if len(silica) >= k:
-                values[f"lab_last{k}"] = silica[-k]
-        for m in view.features.lab_means:
-            if len(silica) >= m:
-                values[f"lab_mean{m}"] = float(np.mean(silica[-m:]))
-        newest = known["sample_hour"].iloc[-1]
-        values[lab_names[-1]] = (pd.Timestamp(inputs.issue_at) - timedelta(hours=view.lab.latency_hours) - newest) / HOUR
-    if inputs.feed is not None:
-        values[list(FEED_FEATURE_COLUMNS)] = inputs.feed[list(FEED_FEATURE_COLUMNS)].to_numpy(dtype="float64")
-    return values
+    return pd.Series(_row_values(inputs, view), index=_FEATURE_INDEX, dtype="float64")
 
 
 def missing_inputs(inputs: IssueInputs, feature_set: str, view: Any) -> str | None:
@@ -264,6 +280,6 @@ def design(tables: HourTables, targets: pd.DatetimeIndex, horizon: int, view: An
     if not isinstance(horizon, (int, np.integer)) or isinstance(horizon, bool) or horizon < 0:
         raise ValueError(f"horizon: se esperaba un entero de 0 o más, se recibió {horizon!r}")
     targets = pd.DatetimeIndex(targets)
-    rows = [feature_row(tables.inputs((target - (int(horizon) - 1) * HOUR).to_pydatetime(), view), view).to_numpy() for target in targets]
+    rows = [_row_values(tables.inputs((target - (int(horizon) - 1) * HOUR).to_pydatetime(), view), view) for target in targets]
     matrix = np.vstack(rows) if rows else np.empty((0, len(FEATURE_COLUMNS)))
     return pd.DataFrame(matrix, index=targets, columns=list(FEATURE_COLUMNS))

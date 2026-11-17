@@ -8,6 +8,7 @@ the rendered design and the figures) are added by the unit that writes the code 
 
 from __future__ import annotations
 
+import gc
 import shutil
 import types
 from collections.abc import Callable
@@ -19,6 +20,11 @@ import pytest
 from tests.fixtures.suite_budget import pytest_addoption, pytest_sessionfinish, pytest_sessionstart  # noqa: F401  (the time limit, D33)
 
 pytest_plugins = ["pytester"]
+
+# The session fixtures keep the fixture's frames, its warehouses and the fitted launches alive for the whole run, and every full collection of the garbage
+# collector walks all of them again. The thresholds are raised so that it runs far less often; garbage in cycles is still freed, only later. It changes no
+# value and no test (project 04, D93).
+gc.set_threshold(200_000, 100, 100)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REAL_ARFF = PROJECT_ROOT / "data" / "raw" / "openml-43311-quality-prediction-mining-process.arff"
@@ -282,17 +288,24 @@ def signal_launch(signal_tables, quick_cfg):
 
 
 @pytest.fixture(scope="session")
-def small_history(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg):
-    """The small fixture as a launch and three deliveries of twelve hours, fitted, sealed and scored run by run (``tests/fixtures/history.py``): built once.
-    A test that writes works on ``copy_history`` of it."""
+def small_launched(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg):
+    """The small fixture's launch loaded, fitted, sealed and scored (``tests/fixtures/history.py``): built once, and the histories below continue from copies of it."""
     from tests.fixtures.history import PLAN_A, build_history
 
-    return build_history(tmp_path_factory.mktemp("history_a"), small_canonical, quick_cfg, PLAN_A)
+    return build_history(tmp_path_factory.mktemp("history_launch"), small_canonical, quick_cfg, PLAN_A[:1])
 
 
 @pytest.fixture(scope="session")
-def small_history_one_batch(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg):
-    """The same hours as ``small_history`` with one delivery of twenty-five hours after the launch instead of three (AC12): built once."""
-    from tests.fixtures.history import PLAN_B, build_history
+def small_history(tmp_path_factory: pytest.TempPathFactory, small_launched, small_canonical):
+    """The launch and three deliveries of twelve hours, fitted, sealed and scored run by run: built once. A test that writes works on ``copy_history`` of it."""
+    from tests.fixtures.history import PLAN_A, extend_history
 
-    return build_history(tmp_path_factory.mktemp("history_b"), small_canonical, quick_cfg, PLAN_B)
+    return extend_history(small_launched, tmp_path_factory.mktemp("history_a") / "h", small_canonical, PLAN_A[1:])
+
+
+@pytest.fixture(scope="session")
+def small_history_one_batch(tmp_path_factory: pytest.TempPathFactory, small_launched, small_canonical):
+    """The same hours as ``small_history`` with one delivery of twenty-five hours after the launch instead of three (AC12): built once."""
+    from tests.fixtures.history import PLAN_B, extend_history
+
+    return extend_history(small_launched, tmp_path_factory.mktemp("history_b") / "h", small_canonical, PLAN_B[1:])

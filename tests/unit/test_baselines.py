@@ -226,3 +226,14 @@ def test_k_and_the_strongest_come_from_v1_only(fit, canonical, quick_cfg):
     assert later.b2_k == fit.b2_k and later.b_star == fit.b_star and later.mae_v1 == fit.mae_v1 and later.cohort_v1 == fit.cohort_v1
     v1 = fit_baselines(mutated(canonical, quick_cfg, {"valid_v1"}, seed=4), quick_cfg)
     assert v1.mae_v1 != fit.mae_v1 and v1.b0_mean == fit.b0_mean, "V1's own values are what k and B* are chosen on"
+
+
+def test_a_history_shorter_than_the_largest_k_is_refused_before_anything_is_fitted(fixture_tables, quick_cfg):
+    """B2 is judged on the hours of the models, which need ``min_fresh_history`` analyses: a history shorter than the largest k would leave B2's cohort
+    different from theirs, so ``fit_baselines`` stops at the configuration, naming both keys and both numbers, before it reads an hour."""
+    largest = max(quick_cfg.baselines.rolling_k)
+    short = dataclasses.replace(quick_cfg, features=dataclasses.replace(quick_cfg.features, min_fresh_history=largest - 1))
+    with pytest.raises(ValueError, match=r"min_fresh_history \(23\).*rolling_k \(24\)") as caught:
+        fit_baselines(fixture_tables, short)
+    assert "[features]" in str(caught.value) and "[baselines]" in str(caught.value) and "mismas horas" in str(caught.value)
+    assert fit_baselines(fixture_tables, dataclasses.replace(quick_cfg, features=dataclasses.replace(quick_cfg.features, min_fresh_history=largest))).b0_mean > 0

@@ -47,10 +47,15 @@ def number(field: str) -> float:
 
 def hours_of(parsed: ParsedArff) -> dict[datetime, list[list[str]]]:
     by_hour: dict[datetime, list[list[str]]] = {}
+    stamps: dict[str, datetime] = {}          # twelve rows of an hour (a hundred and eighty in the real file) share one text: it is parsed once
     for row in parsed.rows:
-        by_hour.setdefault(datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S"), []).append(row)
+        hour = stamps.get(row[0])
+        if hour is None:
+            hour = stamps[row[0]] = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+        by_hour.setdefault(hour, []).append(row)
     return by_hour
 
 
 def column(rows: list[list[str]], name: str) -> list[float]:
-    return [number(row[COLUMNS.index(name)]) for row in rows]
+    position = COLUMNS.index(name)
+    return [number(row[position]) for row in rows]

@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import io
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -225,6 +224,26 @@ def _lab_series(raw_silica: np.ndarray, raw_iron: np.ndarray, observed: np.ndarr
 _BARE_INTEGER = re.compile(r"(?<![^," + chr(10) + r"])'(-?[0-9]+)'(?![^," + chr(10) + r"])")
 
 
+def _cell(text: str) -> str:
+    """One field of a data line: between apostrophes, or bare if it is an integer, as the real file writes a number with no fractional part."""
+    return text if text.lstrip("-").isdigit() else f"'{text}'"
+
+
+def _csv_body(frame: pd.DataFrame) -> str:
+    """The data lines of `frame`: what ``frame.to_csv(header=False, index=False, quoting=csv.QUOTE_ALL, quotechar="'", decimal=",", float_format="%.6g",
+    lineterminator="\n")`` gives with every integer field unquoted by ``_BARE_INTEGER`` (``tests/unit/test_fixture.py`` compares the two), written without
+    pandas' formatter, which took a second for the 49,000 lines of the standard fixture."""
+    columns = []
+    for name in frame.columns:
+        values = frame[name].tolist()
+        if frame[name].dtype.kind == "f":
+            assert not frame[name].isna().any(), f"{name}: the fixture has no missing values"
+            columns.append([_cell(("%.6g" % v).replace(".", ",")) for v in values])
+        else:
+            columns.append([_cell(str(v)) for v in values])
+    return "".join(",".join(cells) + "\n" for cells in zip(*columns, strict=True))
+
+
 def _fmt(values: np.ndarray) -> list[str]:
     """Decimal-comma text with up to six decimals and no trailing zeros, as the real file writes the laboratory columns."""
     return [f"{v:.6f}".rstrip("0").rstrip(".").replace(".", ",") for v in values]
@@ -309,10 +328,7 @@ def make_fixture(path: Path | str, rows_per_hour: int = 12, seed: int = 0, signa
         "hour": np.asarray(grid.strftime("%Y-%m-%d %H:%M:%S"))[hour_of_row], "feed_iron": feed_iron[hour_of_row], "feed_silica": feed_silica[hour_of_row],
         **{name: sensors[:, k] for k, name in enumerate(SENSORS)}, "iron_conc": _fmt(iron_rows), "silica": _fmt(silica_rows),
     })
-    buffer = io.StringIO()
-    frame.to_csv(buffer, header=False, index=False, quoting=csv.QUOTE_ALL, quotechar="'", decimal=",", float_format="%.6g", lineterminator="\n")
-    body = _BARE_INTEGER.sub(lambda match: match.group(1), buffer.getvalue())          # the real file writes a number with no fractional part without apostrophes
-    content = _header(rows_per_hour, seed, signal) + body.encode("utf-8")
+    content = _header(rows_per_hour, seed, signal) + _csv_body(frame).encode("utf-8")
     path.write_bytes(content)
 
     # the truth

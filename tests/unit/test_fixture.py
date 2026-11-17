@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
 import math
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from tests.fixtures.arff_reader import column, hours_of, number, parse
@@ -23,6 +25,7 @@ from tests.fixtures.make_fixture import (
     MALFORMED_RULE,
     SENSORS,
     FixtureTruth,
+    _csv_body,
     make_fixture,
     make_malformed,
 )
@@ -125,6 +128,13 @@ def test_the_header_is_the_real_one_and_the_numbers_are_text_with_a_decimal_comm
         assert datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S").minute == 0 and row[0].endswith(":00:00")
     sample = [number(f) for row in parsed.rows[:500] for f in row[1:]]
     assert any(f.count(",") == 1 for row in parsed.rows[:50] for f in row[1:]) and not any("." in f for row in parsed.rows for f in row)
+    # the writer of the fixture gives the bytes of pandas' ``to_csv`` with the integer fields unquoted, which is how it was written before it was made faster
+    frame = pd.DataFrame({"hour": ["2017-03-10 01:00:00", "2017-03-10 02:00:00", "2017-03-10 03:00:00"], "a": [460.0, -3.0, 1234567.0], "b": [0.000123456789, 12.5, -0.1],
+                          "c": ["2,5", "10", "-4"], "d": [1e-7, 99.99999, 100.0]})
+    buffer = io.StringIO()
+    frame.to_csv(buffer, header=False, index=False, quoting=csv.QUOTE_ALL, quotechar="'", decimal=",", float_format="%.6g", lineterminator="\n")
+    unquote = re.compile(r"(?<![^," + chr(10) + r"])'(-?[0-9]+)'(?![^," + chr(10) + r"])")
+    assert _csv_body(frame) == unquote.sub(lambda match: match.group(1), buffer.getvalue())
     assert all(math.isfinite(v) for v in sample)
     assert fixture_truth.path.read_bytes().count(b"\r") == 0
 

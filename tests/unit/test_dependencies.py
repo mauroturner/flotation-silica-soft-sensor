@@ -335,8 +335,7 @@ def test_installed_versions_match_the_pins():
 
 def test_pip_check_reports_no_broken_requirements():
     result = subprocess.run([sys.executable, "-m", "pip", "check", "--disable-pip-version-check"], capture_output=True, text=True, timeout=120)
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "No broken requirements found" in result.stdout
+    assert result.returncode == 0, result.stdout + result.stderr          # the exit code is the contract; the words pip prints are not
 
 
 # --- the project files ----------------------------------------------------------------------------------------------------

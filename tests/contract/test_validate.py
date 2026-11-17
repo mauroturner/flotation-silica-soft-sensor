@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
+import sqlite3
 from pathlib import Path
 
 import pandas as pd
@@ -49,14 +50,22 @@ def result(report: ValidationReport, rule_id: str) -> RuleResult:
     return next(r for r in report.results if r.rule_id == rule_id)
 
 
+_MASTERS: dict[tuple[int, str], sqlite3.Connection] = {}      # the stores that were built, by delivery of the plan: every test gets a copy of one
+
+
 def store_until(published, delivery_id: str):
-    """A warehouse that holds every delivery of the plan before `delivery_id`."""
+    """A warehouse that holds every delivery of the plan before `delivery_id`: built once per delivery and handed over as a copy, so a test can break it."""
+    key = (id(published), delivery_id)
+    if key not in _MASTERS:
+        master = store.empty_store()
+        for spec in published.plan:
+            if spec.delivery_id == delivery_id:
+                break
+            _entry, rows, hours = published.items[spec.delivery_id]
+            store.load(master, spec.delivery_id, rows, hours)
+        _MASTERS[key] = master
     conn = store.empty_store()
-    for spec in published.plan:
-        if spec.delivery_id == delivery_id:
-            break
-        _entry, rows, hours = published.items[spec.delivery_id]
-        store.load(conn, spec.delivery_id, rows, hours)
+    _MASTERS[key].backup(conn)
     return conn
 
 

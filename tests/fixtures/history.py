@@ -44,29 +44,40 @@ def build_history(folder: Path, canonical, quick_cfg, plan=PLAN_A, **model) -> t
     view = small_view(quick_cfg, **model)
     sealed = sealed_view(view, SOURCE_SHA256)
     paths = types.SimpleNamespace(db=folder / "warehouse.sqlite", seal=folder / "reports" / "model_seal.json", models=folder / "models")
-    results, fits, runs = [], [], []
+    history = types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=[], fits=[], results=[], plan=())
+    return _continue(history, canonical, plan)
+
+
+def extend_history(history, folder: Path, canonical, rest) -> types.SimpleNamespace:
+    """A copy of `history` in `folder` that goes on with the deliveries `rest`: the launch is fitted once and several histories share it."""
+    return _continue(copy_history(history, folder), canonical, rest)
+
+
+def _continue(history, canonical, plan) -> types.SimpleNamespace:
+    paths, sealed = history.paths, history.sealed
     conn = connect(paths.db)
     try:
-        previous = None
-        for k, delivery in enumerate(plan, start=1):
+        previous = history.runs[-1].as_of if history.runs else None
+        for delivery in plan:
             rows = canonical.rows[(canonical.rows["hour"] >= delivery.first_hour) & (canonical.rows["hour"] <= delivery.last_hour)]
             hours = canonical.hours[(canonical.hours["hour"] >= delivery.first_hour) & (canonical.hours["hour"] <= delivery.last_hour)]
-            run = RunMeta(f"r{k}", delivery.delivery_id, delivery.kind, delivery.as_of, previous)
-            load_delivery(conn, rows, hours, delivery, run.run_key, view, sha256="f" * 64)
-            fits.append(fit_model(conn, run, sealed, models_dir=paths.models, seal_path=paths.seal))
-            results.append(score_run(conn, run, load_registered_bundle(conn, paths.models, sealed.model.model_version), sealed))
-            runs.append(run)
+            run = RunMeta(f"r{len(history.runs) + 1}", delivery.delivery_id, delivery.kind, delivery.as_of, previous)
+            load_delivery(conn, rows, hours, delivery, run.run_key, history.view, sha256="f" * 64)
+            history.fits.append(fit_model(conn, run, sealed, models_dir=paths.models, seal_path=paths.seal))
+            history.results.append(score_run(conn, run, load_registered_bundle(conn, paths.models, sealed.model.model_version), sealed))
+            history.runs.append(run)
             previous = delivery.as_of
     finally:
         conn.close()
-    return types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=runs, fits=fits, results=results, plan=plan)
+    history.plan = (*history.plan, *plan)
+    return history
 
 
 def copy_history(history, target: Path) -> types.SimpleNamespace:
     """A copy of a history's warehouse, seal and models in `target`, for a test that writes."""
     shutil.copytree(history.paths.db.parent, target)
     paths = types.SimpleNamespace(db=target / "warehouse.sqlite", seal=target / "reports" / "model_seal.json", models=target / "models")
-    return types.SimpleNamespace(**{**vars(history), "paths": paths})
+    return types.SimpleNamespace(**{**vars(history), "paths": paths, "runs": list(history.runs), "fits": list(history.fits), "results": list(history.results)})
 
 
 def stamp(value) -> str:

@@ -21,7 +21,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from flotsilica.baselines import B1, B2
+from flotsilica.baselines import B1, B2, METHODS
 from flotsilica.features import IssueInputs, feature_row, inputs_at, lab_known_at, missing_inputs
 from flotsilica.intervals import interval
 from flotsilica.registry import ModelBundle
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 HOUR = timedelta(hours=1)
 METHOD_MODEL = "model"
-METHOD_NAMES = ("model", "b0_train_mean", B1, B2, "b3_ridge_sensors", "best_sensors_only", "best_lab_only", "best_with_sensors")
+METHOD_NAMES = ("model", *METHODS, "best_sensors_only", "best_lab_only", "best_with_sensors")
 LAUNCH_INSTANTS = 2          # the launch emits at the last two closes of its hours (plan, section 3)
 OK, MISSING = "ok", "missing_inputs"
 
