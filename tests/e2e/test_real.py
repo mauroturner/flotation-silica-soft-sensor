@@ -43,12 +43,13 @@ def outputs(cfg):
     paths = cfg.paths
     seal_path, summary_path = require(Path(paths.seal)), require(Path(paths.reports_dir) / "evaluation_summary.json")
     warehouse = require(Path(paths.warehouse))
+    read = {"seal": json.loads(seal_path.read_text(encoding="utf-8")), "summary": json.loads(summary_path.read_text(encoding="utf-8")),
+            "site": read_site(Path(paths.site_dir)), "seal_path": seal_path, "powerbi": Path(paths.outputs_dir)}
     conn = sqlite3.connect(f"{warehouse.as_uri()}?mode=ro", uri=True)
-    yield {
-        "conn": conn, "seal": json.loads(seal_path.read_text(encoding="utf-8")), "summary": json.loads(summary_path.read_text(encoding="utf-8")),
-        "site": read_site(Path(paths.site_dir)), "seal_path": seal_path, "powerbi": Path(paths.outputs_dir),
-    }
-    conn.close()
+    try:
+        yield {"conn": conn, **read}
+    finally:
+        conn.close()
 
 
 def test_real_counts_seal_and_summary_consistency(cfg, outputs):
