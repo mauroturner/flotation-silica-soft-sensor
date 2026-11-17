@@ -1,0 +1,731 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "criteria": [
+  {
+   "baseline_value": 0.5190196078431373,
+   "ci_high": null,
+   "ci_low": null,
+   "criterion_id": "C01",
+   "name_es": "H0 frente a la persistencia",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "MAE(modelo) < MAE(persistencia)",
+   "value": 0.5971934427994288,
+   "verdict_es": "El modelo no supera a la persistencia en la hora que cerró: MAE 0,60 frente a 0,52."
+  },
+  {
+   "baseline_value": 0.5190196078431373,
+   "ci_high": 0.10948726054438435,
+   "ci_low": 0.04812550407255323,
+   "criterion_id": "C02",
+   "name_es": "H0 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.5971934427994288,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora que cerró fuera del ruido: MAE 0,60 frente a 0,52; la diferencia va de 0,05 a 0,11."
+  },
+  {
+   "baseline_value": 0.7027219974624401,
+   "ci_high": 0.054559185002831696,
+   "ci_low": -0.05281132952520444,
+   "criterion_id": "C03",
+   "name_es": "H1 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.703441935734395,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora que empieza fuera del ruido: MAE 0,70 frente a 0,70; la diferencia va de −0,05 a 0,05."
+  },
+  {
+   "baseline_value": 0.7879951213588671,
+   "ci_high": 0.03492486025234796,
+   "ci_low": -0.096656107641605,
+   "criterion_id": "C04",
+   "name_es": "H2 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.7529040788162624,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora siguiente fuera del ruido: MAE 0,75 frente a 0,79; la diferencia va de −0,10 a 0,03."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "criterion_id": "C05",
+   "name_es": "Cobertura del rango de H0",
+   "passed": true,
+   "seen_by_planner": "en parte",
+   "seen_by_research": "no",
+   "threshold_es": "proporción de horas con el análisis dentro del rango del 80 % entre 0,75 y 0,85",
+   "value": 0.7934640522875817,
+   "verdict_es": "El rango del 80 % cumple en la hora que cerró: cubre 0,793 de las horas, y se pedía entre 0,75 y 0,85."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "criterion_id": "C06",
+   "name_es": "Sesgo de H0",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "|media(modelo − análisis)| ≤ 0,10",
+   "value": 0.14797269522409695,
+   "verdict_es": "El sesgo en la hora que cerró no cumple: el modelo estima 0,148 de más en promedio, y se pedía a lo sumo 0,10."
+  },
+  {
+   "baseline_value": 0.9241000476441893,
+   "ci_high": -0.057304729490925965,
+   "ci_low": -0.156763030579923,
+   "criterion_id": "C07",
+   "name_es": "Los sensores solos frente a la media",
+   "passed": true,
+   "seen_by_planner": "sí",
+   "seen_by_research": "en parte",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(mejor solo con sensores) − MAE(B0) < 0",
+   "value": 0.8192760445068649,
+   "verdict_es": "Los sensores solos superan a la media del entrenamiento: MAE 0,82 frente a 0,92; la diferencia va de −0,16 a −0,06."
+  },
+  {
+   "baseline_value": 0.5177588046395947,
+   "ci_high": 0.10445316555905898,
+   "ci_low": 0.05646648373377021,
+   "criterion_id": "C08",
+   "name_es": "Los sensores agregan a la historia del laboratorio",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "en parte",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(mejor con sensores) − MAE(mejor solo con laboratorio) < 0",
+   "value": 0.5971934427994288,
+   "verdict_es": "Con sensores, el modelo no agrega a la historia del laboratorio: MAE 0,60 frente a 0,52; la diferencia va de 0,06 a 0,10."
+  },
+  {
+   "baseline_value": 0.0,
+   "ci_high": null,
+   "ci_low": null,
+   "criterion_id": "C09",
+   "name_es": "Sensibilidad estable",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "al menos un sensor pasa la compuerta y conserva el signo de su dependencia parcial en la prueba",
+   "value": 0.0,
+   "verdict_es": "Ningún sensor pasa la compuerta de estabilidad: sin asociación estable."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "criterion_id": "C10",
+   "name_es": "Por semana y variantes (informativo)",
+   "passed": null,
+   "seen_by_planner": "sí, en V1 y V2",
+   "seen_by_research": "no",
+   "threshold_es": "sin umbral: que esté escrito y sea consistente",
+   "value": null,
+   "verdict_es": "Informativo, sin umbral: el MAE del modelo, de la persistencia y de la base más fuerte por semana y las variantes de latencia y de reajuste, escritos en el sello (2295 horas evaluadas)."
+  }
+ ],
+ "evaluation_status": "sealed",
+ "pending_reason_es": null,
+ "post_seal": null,
+ "run_key": "20261117T180212267264Z",
+ "schema_version": 1,
+ "seal": {
+  "config_sha256": "3897c741fa497f5d7cf13df42ad7118b1eb1d750e1239e74b48e71dc33846fe7",
+  "launch_run_key": "20261117T175515120901Z",
+  "test_as_of": "2017-09-10 01:00:00",
+  "test_run_key": "20261117T180212267264Z"
+ },
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2",
+ "test": {
+  "bootstraps": {
+   "best_sensors_only_vs_b0_train_mean.h0": {
+    "ci_high": -0.057304729490925965,
+    "ci_low": -0.156763030579923,
+    "difference": -0.10482400313732443,
+    "resamples": 2000
+   },
+   "best_with_sensors_vs_best_lab_only.h0": {
+    "ci_high": 0.10445316555905898,
+    "ci_low": 0.05646648373377021,
+    "difference": 0.07943463815983409,
+    "resamples": 2000
+   },
+   "model_vs_b1_persistence.h0": {
+    "ci_high": 0.10948726054438435,
+    "ci_low": 0.04812550407255323,
+    "difference": 0.07817383495629149,
+    "resamples": 2000
+   },
+   "model_vs_b1_persistence.h1": {
+    "ci_high": 0.0777456866666085,
+    "ci_low": -0.021229051256442272,
+    "difference": 0.028017091779362402,
+    "resamples": 2000
+   },
+   "model_vs_b1_persistence.h2": {
+    "ci_high": 0.03639227037151207,
+    "ci_low": -0.0890834550954166,
+    "difference": -0.02719285368752844,
+    "resamples": 2000
+   },
+   "model_vs_b_star.h0": {
+    "ci_high": 0.10948726054438435,
+    "ci_low": 0.04812550407255323,
+    "difference": 0.07817383495629149,
+    "resamples": 2000
+   },
+   "model_vs_b_star.h1": {
+    "ci_high": 0.054559185002831696,
+    "ci_low": -0.05281132952520444,
+    "difference": 0.0007199382719548231,
+    "resamples": 2000
+   },
+   "model_vs_b_star.h2": {
+    "ci_high": 0.03492486025234796,
+    "ci_low": -0.096656107641605,
+    "difference": -0.035091042542604645,
+    "resamples": 2000
+   }
+  },
+  "horizons": {
+   "0": {
+    "hours": 765,
+    "methods": {
+     "b0_train_mean": {
+      "bias": 0.1823102814344882,
+      "coverage": null,
+      "mae": 0.9241000476441893,
+      "rmse": 1.1133651218039697
+     },
+     "b1_persistence": {
+      "bias": 0.0004836601307189535,
+      "coverage": null,
+      "mae": 0.5190196078431373,
+      "rmse": 0.7903033393894426
+     },
+     "b2_rolling": {
+      "bias": 1.3071895424848803e-05,
+      "coverage": null,
+      "mae": 0.5730039920997823,
+      "rmse": 0.8245304814535063
+     },
+     "b3_ridge_sensors": {
+      "bias": 0.11418792432901516,
+      "coverage": null,
+      "mae": 1.1830359411492308,
+      "rmse": 1.4968602453092426
+     },
+     "b_star": {
+      "bias": 0.0004836601307189535,
+      "coverage": null,
+      "mae": 0.5190196078431373,
+      "rmse": 0.7903033393894426
+     },
+     "best_lab_only": {
+      "bias": 0.016212445137540887,
+      "coverage": null,
+      "mae": 0.5177588046395947,
+      "rmse": 0.7401129795307158
+     },
+     "best_sensors_only": {
+      "bias": -0.04587381545476937,
+      "coverage": null,
+      "mae": 0.8192760445068649,
+      "rmse": 1.0479247080234493
+     },
+     "best_with_sensors": {
+      "bias": 0.14797269522409695,
+      "coverage": null,
+      "mae": 0.5971934427994288,
+      "rmse": 0.7664743380813336
+     },
+     "model": {
+      "bias": 0.14797269522409695,
+      "coverage": 0.7934640522875817,
+      "mae": 0.5971934427994288,
+      "rmse": 0.7664743380813336
+     }
+    }
+   },
+   "1": {
+    "hours": 765,
+    "methods": {
+     "b0_train_mean": {
+      "bias": 0.1823102814344882,
+      "coverage": null,
+      "mae": 0.9241000476441893,
+      "rmse": 1.1133651218039697
+     },
+     "b1_persistence": {
+      "bias": 0.000913883647843146,
+      "coverage": null,
+      "mae": 0.6754248439550326,
+      "rmse": 0.9720761576190335
+     },
+     "b2_rolling": {
+      "bias": 0.004174329236819182,
+      "coverage": null,
+      "mae": 0.7027219974624401,
+      "rmse": 0.974073961846344
+     },
+     "b3_ridge_sensors": {
+      "bias": 0.15628678404929658,
+      "coverage": null,
+      "mae": 1.1708404771402683,
+      "rmse": 1.4850356227950614
+     },
+     "b_star": {
+      "bias": 0.004174329236819182,
+      "coverage": null,
+      "mae": 0.7027219974624401,
+      "rmse": 0.974073961846344
+     },
+     "best_lab_only": {
+      "bias": 0.026180684098810306,
+      "coverage": null,
+      "mae": 0.6436264951351041,
+      "rmse": 0.8805543740959085
+     },
+     "best_sensors_only": {
+      "bias": -0.03513474495777606,
+      "coverage": null,
+      "mae": 0.8603275433984136,
+      "rmse": 1.0890413269784212
+     },
+     "best_with_sensors": {
+      "bias": 0.0505238486975872,
+      "coverage": null,
+      "mae": 0.703441935734395,
+      "rmse": 0.8960956260818828
+     },
+     "model": {
+      "bias": 0.0505238486975872,
+      "coverage": 0.7673202614379085,
+      "mae": 0.703441935734395,
+      "rmse": 0.8960956260818828
+     }
+    }
+   },
+   "2": {
+    "hours": 765,
+    "methods": {
+     "b0_train_mean": {
+      "bias": 0.1823102814344882,
+      "coverage": null,
+      "mae": 0.9241000476441893,
+      "rmse": 1.1133651218039697
+     },
+     "b1_persistence": {
+      "bias": 0.014917555178823528,
+      "coverage": null,
+      "mae": 0.7800969325037909,
+      "rmse": 1.0900038565090913
+     },
+     "b2_rolling": {
+      "bias": 0.01411988219860569,
+      "coverage": null,
+      "mae": 0.7879951213588671,
+      "rmse": 1.0821463538061467
+     },
+     "b3_ridge_sensors": {
+      "bias": 0.07674978845064813,
+      "coverage": null,
+      "mae": 1.0492220006600699,
+      "rmse": 1.3272666246139022
+     },
+     "b_star": {
+      "bias": 0.01411988219860569,
+      "coverage": null,
+      "mae": 0.7879951213588671,
+      "rmse": 1.0821463538061467
+     },
+     "best_lab_only": {
+      "bias": 0.02911173529662287,
+      "coverage": null,
+      "mae": 0.7126859239168511,
+      "rmse": 0.9577380946919666
+     },
+     "best_sensors_only": {
+      "bias": 0.014845417444400284,
+      "coverage": null,
+      "mae": 0.8885526963325507,
+      "rmse": 1.1139982133856934
+     },
+     "best_with_sensors": {
+      "bias": 0.013059571384528344,
+      "coverage": null,
+      "mae": 0.7529040788162624,
+      "rmse": 0.9658332436371436
+     },
+     "model": {
+      "bias": 0.013059571384528344,
+      "coverage": 0.7294117647058823,
+      "mae": 0.7529040788162624,
+      "rmse": 0.9658332436371436
+     }
+    }
+   }
+  },
+  "sensitivity": {
+   "computed": true,
+   "kept_sign": [],
+   "passing": []
+  }
+ },
+ "validation": {
+  "valid_v1": {
+   "0": {
+    "b0_train_mean": {
+     "bias": 0.4339956250325647,
+     "hours": 630.0,
+     "mae": 0.810489687341605,
+     "rmse": 0.9478561453893629
+    },
+    "b1_persistence": {
+     "bias": 0.0008571428571428604,
+     "hours": 630.0,
+     "mae": 0.473968253968254,
+     "rmse": 0.7436831813286898
+    },
+    "b2_rolling": {
+     "bias": 0.0005343915343915316,
+     "hours": 630.0,
+     "mae": 0.4881981281944974,
+     "rmse": 0.712626304707635
+    },
+    "b3_ridge_sensors": {
+     "bias": -0.057985861927558155,
+     "hours": 630.0,
+     "mae": 0.7167809722876857,
+     "rmse": 0.9527399572557566
+    },
+    "b_star": {
+     "bias": 0.0008571428571428604,
+     "hours": 630.0,
+     "mae": 0.473968253968254,
+     "rmse": 0.7436831813286898
+    },
+    "best_lab_only": {
+     "bias": 0.0605241806745333,
+     "hours": 630.0,
+     "mae": 0.44439870818715466,
+     "rmse": 0.6528767046139563
+    },
+    "best_sensors_only": {
+     "bias": 0.027677899628337936,
+     "hours": 630.0,
+     "mae": 0.49233037425221227,
+     "rmse": 0.6816019266134237
+    },
+    "best_with_sensors": {
+     "bias": 0.015121079427253558,
+     "hours": 630.0,
+     "mae": 0.26830074445747,
+     "rmse": 0.4198896675178946
+    },
+    "model": {
+     "bias": 0.015121079427253558,
+     "coverage": 0.9428571428571428,
+     "hours": 630.0,
+     "mae": 0.26830074445747,
+     "rmse": 0.4198896675178946
+    }
+   },
+   "1": {
+    "b0_train_mean": {
+     "bias": 0.4339956250325647,
+     "hours": 630.0,
+     "mae": 0.810489687341605,
+     "rmse": 0.9478561453893629
+    },
+    "b1_persistence": {
+     "bias": -0.003293262778253965,
+     "hours": 630.0,
+     "mae": 0.5561254594658731,
+     "rmse": 0.8500717533017861
+    },
+    "b2_rolling": {
+     "bias": -0.005960188121851852,
+     "hours": 630.0,
+     "mae": 0.5528898445422752,
+     "rmse": 0.7983066357734034
+    },
+    "b3_ridge_sensors": {
+     "bias": -0.09924918093695545,
+     "hours": 630.0,
+     "mae": 0.7009556372380449,
+     "rmse": 0.9418813056279168
+    },
+    "b_star": {
+     "bias": -0.005960188121851852,
+     "hours": 630.0,
+     "mae": 0.5528898445422752,
+     "rmse": 0.7983066357734034
+    },
+    "best_lab_only": {
+     "bias": 0.09365928074894946,
+     "hours": 630.0,
+     "mae": 0.5210889234945146,
+     "rmse": 0.7311646051584204
+    },
+    "best_sensors_only": {
+     "bias": 0.02202049318713823,
+     "hours": 630.0,
+     "mae": 0.4959084774017443,
+     "rmse": 0.6822525833646685
+    },
+    "best_with_sensors": {
+     "bias": 0.02296447369821935,
+     "hours": 630.0,
+     "mae": 0.43500153537479563,
+     "rmse": 0.6064544361917059
+    },
+    "model": {
+     "bias": 0.02296447369821935,
+     "coverage": 0.9126984126984127,
+     "hours": 630.0,
+     "mae": 0.43500153537479563,
+     "rmse": 0.6064544361917059
+    }
+   },
+   "2": {
+    "b0_train_mean": {
+     "bias": 0.4339956250325647,
+     "hours": 630.0,
+     "mae": 0.810489687341605,
+     "rmse": 0.9478561453893629
+    },
+    "b1_persistence": {
+     "bias": -0.009921451025714281,
+     "hours": 630.0,
+     "mae": 0.618706804696508,
+     "rmse": 0.9025656866209736
+    },
+    "b2_rolling": {
+     "bias": -0.010022546874973552,
+     "hours": 630.0,
+     "mae": 0.6056495007633335,
+     "rmse": 0.8611926438153197
+    },
+    "b3_ridge_sensors": {
+     "bias": -0.06771796616286524,
+     "hours": 630.0,
+     "mae": 0.7029816153862904,
+     "rmse": 0.9490766757216909
+    },
+    "b_star": {
+     "bias": -0.010022546874973552,
+     "hours": 630.0,
+     "mae": 0.6056495007633335,
+     "rmse": 0.8611926438153197
+    },
+    "best_lab_only": {
+     "bias": 0.11103506478226036,
+     "hours": 630.0,
+     "mae": 0.5607565661786114,
+     "rmse": 0.7669224951464798
+    },
+    "best_sensors_only": {
+     "bias": 0.020806078385720635,
+     "hours": 630.0,
+     "mae": 0.5025670260096048,
+     "rmse": 0.6941144947381938
+    },
+    "best_with_sensors": {
+     "bias": 0.02192914014643666,
+     "hours": 630.0,
+     "mae": 0.4591095830278218,
+     "rmse": 0.6443354255512597
+    },
+    "model": {
+     "bias": 0.02192914014643666,
+     "coverage": 0.9079365079365079,
+     "hours": 630.0,
+     "mae": 0.4591095830278218,
+     "rmse": 0.6443354255512597
+    }
+   }
+  },
+  "valid_v2": {
+   "0": {
+    "b0_train_mean": {
+     "bias": 0.5241810306983907,
+     "hours": 597.0,
+     "mae": 0.9138021016571372,
+     "rmse": 1.043967922634008
+    },
+    "b1_persistence": {
+     "bias": 0.00030150753768843394,
+     "hours": 597.0,
+     "mae": 0.5328978224455612,
+     "rmse": 0.8633071064398904
+    },
+    "b2_rolling": {
+     "bias": 0.005376884422110556,
+     "hours": 597.0,
+     "mae": 0.5470049413508654,
+     "rmse": 0.8223501315019764
+    },
+    "b3_ridge_sensors": {
+     "bias": 0.4590975558439771,
+     "hours": 597.0,
+     "mae": 0.9807988798893845,
+     "rmse": 1.237156652970014
+    },
+    "b_star": {
+     "bias": 0.00030150753768843394,
+     "hours": 597.0,
+     "mae": 0.5328978224455612,
+     "rmse": 0.8633071064398904
+    },
+    "best_lab_only": {
+     "bias": 0.06529068182479017,
+     "hours": 597.0,
+     "mae": 0.5206658270052167,
+     "rmse": 0.788473734719849
+    },
+    "best_sensors_only": {
+     "bias": 0.2876471471282871,
+     "hours": 597.0,
+     "mae": 0.7817274915093659,
+     "rmse": 0.9665234626615072
+    },
+    "best_with_sensors": {
+     "bias": 0.11052502886786704,
+     "hours": 597.0,
+     "mae": 0.5424192767659672,
+     "rmse": 0.7713824600283241
+    },
+    "model": {
+     "bias": 0.11052502886786704,
+     "coverage": 0.8023450586264657,
+     "hours": 597.0,
+     "mae": 0.5424192767659672,
+     "rmse": 0.7713824600283241
+    }
+   },
+   "1": {
+    "b0_train_mean": {
+     "bias": 0.5241810306983907,
+     "hours": 597.0,
+     "mae": 0.9138021016571372,
+     "rmse": 1.043967922634008
+    },
+    "b1_persistence": {
+     "bias": 0.023110670800837518,
+     "hours": 597.0,
+     "mae": 0.6691974356329983,
+     "rmse": 1.0305446351942917
+    },
+    "b2_rolling": {
+     "bias": 0.016380922098324962,
+     "hours": 597.0,
+     "mae": 0.6279138749000001,
+     "rmse": 0.9339227736799299
+    },
+    "b3_ridge_sensors": {
+     "bias": 0.33053660612357905,
+     "hours": 597.0,
+     "mae": 0.9224697926672544,
+     "rmse": 1.1864453308939087
+    },
+    "b_star": {
+     "bias": 0.016380922098324962,
+     "hours": 597.0,
+     "mae": 0.6279138749000001,
+     "rmse": 0.9339227736799299
+    },
+    "best_lab_only": {
+     "bias": 0.11516262186459769,
+     "hours": 597.0,
+     "mae": 0.6406117094244145,
+     "rmse": 0.9170569061216848
+    },
+    "best_sensors_only": {
+     "bias": 0.27644628789384523,
+     "hours": 597.0,
+     "mae": 0.7835371228213098,
+     "rmse": 0.9683338680742437
+    },
+    "best_with_sensors": {
+     "bias": 0.18806109417330738,
+     "hours": 597.0,
+     "mae": 0.6505417263916363,
+     "rmse": 0.8431194850417161
+    },
+    "model": {
+     "bias": 0.18806109417330738,
+     "coverage": 0.8023450586264657,
+     "hours": 597.0,
+     "mae": 0.6505417263916363,
+     "rmse": 0.8431194850417161
+    }
+   },
+   "2": {
+    "b0_train_mean": {
+     "bias": 0.5241810306983907,
+     "hours": 597.0,
+     "mae": 0.9138021016571372,
+     "rmse": 1.043967922634008
+    },
+    "b1_persistence": {
+     "bias": 0.037117245710050255,
+     "hours": 597.0,
+     "mae": 0.723847242781072,
+     "rmse": 1.0900354284324356
+    },
+    "b2_rolling": {
+     "bias": 0.020419666987772197,
+     "hours": 597.0,
+     "mae": 0.6870015819702401,
+     "rmse": 1.0019495485894998
+    },
+    "b3_ridge_sensors": {
+     "bias": 0.3002063380683363,
+     "hours": 597.0,
+     "mae": 0.8778423325364,
+     "rmse": 1.1079558170899726
+    },
+    "b_star": {
+     "bias": 0.020419666987772197,
+     "hours": 597.0,
+     "mae": 0.6870015819702401,
+     "rmse": 1.0019495485894998
+    },
+    "best_lab_only": {
+     "bias": 0.15997417718026424,
+     "hours": 597.0,
+     "mae": 0.6872057874169172,
+     "rmse": 0.9577679060232465
+    },
+    "best_sensors_only": {
+     "bias": 0.3026206129817166,
+     "hours": 597.0,
+     "mae": 0.8027676633634226,
+     "rmse": 0.9909649667796747
+    },
+    "best_with_sensors": {
+     "bias": 0.17593998464207156,
+     "hours": 597.0,
+     "mae": 0.6730192075827109,
+     "rmse": 0.8705362001146258
+    },
+    "model": {
+     "bias": 0.17593998464207156,
+     "coverage": 0.8023450586264657,
+     "hours": 597.0,
+     "mae": 0.6730192075827109,
+     "rmse": 0.8705362001146258
+    }
+   }
+  }
+ }
+}
