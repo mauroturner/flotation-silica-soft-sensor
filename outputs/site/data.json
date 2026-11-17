@@ -1,0 +1,245 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "feed": {
+  "max_unchanged_hours": 791.0,
+  "median_unchanged_hours": 7.0
+ },
+ "gap": {
+  "first": "2017-03-16 06:00:00",
+  "hours": 318,
+  "last": "2017-03-29 11:00:00"
+ },
+ "held_runs": {
+  "hours_in_them": 220,
+  "longest_hours": 38,
+  "runs_3h_or_more": 22
+ },
+ "interpolated_run": {
+  "end_value": 3.57,
+  "hours": [
+   "2017-04-19 12:00:00",
+   "2017-04-19 13:00:00",
+   "2017-04-19 14:00:00",
+   "2017-04-19 15:00:00",
+   "2017-04-19 16:00:00",
+   "2017-04-19 17:00:00",
+   "2017-04-19 18:00:00",
+   "2017-04-19 19:00:00",
+   "2017-04-19 20:00:00",
+   "2017-04-19 21:00:00",
+   "2017-04-19 22:00:00",
+   "2017-04-19 23:00:00",
+   "2017-04-20 00:00:00",
+   "2017-04-20 01:00:00",
+   "2017-04-20 02:00:00",
+   "2017-04-20 03:00:00"
+  ],
+  "slope_per_hour": -0.0047,
+  "start_value": 3.65,
+  "values": [
+   3.65,
+   3.64,
+   3.64,
+   3.63,
+   3.63,
+   3.62,
+   3.62,
+   3.61,
+   3.61,
+   3.6,
+   3.6,
+   3.59,
+   3.59,
+   3.58,
+   3.58,
+   3.57
+  ]
+ },
+ "run_key": "20261117T180212267264Z",
+ "sampling": {
+  "lab_columns": 4,
+  "rows_per_hour": 180,
+  "seconds_per_row": 20,
+  "sensors": 19
+ },
+ "schema_version": 1,
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2",
+ "split": [
+  {
+   "block": "train",
+   "first": "2017-03-10 01:00:00",
+   "fresh": 1369,
+   "hours": 1673,
+   "label_es": "Entrenamiento",
+   "last": "2017-05-31 23:00:00"
+  },
+  {
+   "block": "valid_v1",
+   "first": "2017-06-02 00:00:00",
+   "fresh": 630,
+   "hours": 696,
+   "label_es": "Validación V1",
+   "last": "2017-06-30 23:00:00"
+  },
+  {
+   "block": "valid_v2",
+   "first": "2017-07-02 00:00:00",
+   "fresh": 597,
+   "hours": 696,
+   "label_es": "Validación V2",
+   "last": "2017-07-30 23:00:00"
+  },
+  {
+   "block": "test",
+   "first": "2017-08-01 00:00:00",
+   "fresh": 765,
+   "hours": 960,
+   "label_es": "Prueba",
+   "last": "2017-09-09 23:00:00"
+  }
+ ],
+ "states_by_block": [
+  {
+   "block": "train",
+   "fresh": 1369,
+   "held": 165,
+   "interpolated": 139,
+   "label_es": "Entrenamiento",
+   "missing": 318,
+   "pending": 0
+  },
+  {
+   "block": "valid_v1",
+   "fresh": 630,
+   "held": 58,
+   "interpolated": 8,
+   "label_es": "Validación V1",
+   "missing": 0,
+   "pending": 0
+  },
+  {
+   "block": "valid_v2",
+   "fresh": 597,
+   "held": 87,
+   "interpolated": 12,
+   "label_es": "Validación V2",
+   "missing": 0,
+   "pending": 0
+  },
+  {
+   "block": "test",
+   "fresh": 765,
+   "held": 130,
+   "interpolated": 65,
+   "label_es": "Prueba",
+   "missing": 0,
+   "pending": 0
+  }
+ ],
+ "target": {
+  "acf": [
+   {
+    "lag": 1,
+    "r": 0.688
+   },
+   {
+    "lag": 2,
+    "r": 0.565
+   },
+   {
+    "lag": 3,
+    "r": 0.484
+   },
+   {
+    "lag": 4,
+    "r": 0.391
+   },
+   {
+    "lag": 5,
+    "r": 0.306
+   },
+   {
+    "lag": 6,
+    "r": 0.272
+   },
+   {
+    "lag": 7,
+    "r": 0.221
+   },
+   {
+    "lag": 8,
+    "r": 0.207
+   },
+   {
+    "lag": 9,
+    "r": 0.202
+   },
+   {
+    "lag": 10,
+    "r": 0.178
+   },
+   {
+    "lag": 11,
+    "r": 0.191
+   },
+   {
+    "lag": 12,
+    "r": 0.188
+   },
+   {
+    "lag": 13,
+    "r": 0.167
+   },
+   {
+    "lag": 14,
+    "r": 0.17
+   },
+   {
+    "lag": 15,
+    "r": 0.182
+   },
+   {
+    "lag": 16,
+    "r": 0.17
+   },
+   {
+    "lag": 17,
+    "r": 0.174
+   },
+   {
+    "lag": 18,
+    "r": 0.167
+   },
+   {
+    "lag": 19,
+    "r": 0.165
+   },
+   {
+    "lag": 20,
+    "r": 0.155
+   },
+   {
+    "lag": 21,
+    "r": 0.169
+   },
+   {
+    "lag": 22,
+    "r": 0.162
+   },
+   {
+    "lag": 23,
+    "r": 0.157
+   },
+   {
+    "lag": 24,
+    "r": 0.169
+   }
+  ],
+  "mean": 2.45,
+  "p05": 1.07,
+  "p50": 2.13,
+  "p95": 4.8,
+  "sd": 1.15
+ }
+}

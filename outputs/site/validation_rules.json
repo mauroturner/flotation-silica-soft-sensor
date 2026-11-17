@@ -1,0 +1,306 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "rules": [
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "El archivo existe y tiene el tamaño y la huella aceptados (o la registrada, en modo rápido)",
+   "rows": 0,
+   "rule_id": "V01",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "Cabecera exacta: @RELATION, los 24 @ATTRIBUTE en orden y todos STRING, @DATA una vez",
+   "rows": 0,
+   "rule_id": "V02",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "UTF-8 estricto, sin byte nulo, líneas dentro del tope, archivo y filas dentro de sus topes",
+   "rows": 0,
+   "rule_id": "V03",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "Cada fila con 24 campos, cada uno entre apóstrofos o un entero sin apóstrofos, y ninguno vacío",
+   "rows": 0,
+   "rule_id": "V04",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "Fecha AAAA-MM-DD HH:00:00 y números con coma decimal",
+   "rows": 0,
+   "rule_id": "V05",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "Fechas no decrecientes",
+   "rows": 0,
+   "rule_id": "V06",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 0,
+   "name_es": "Ninguna hora con más filas que las de una hora completa",
+   "rows": 0,
+   "rule_id": "V07",
+   "scope": "source",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "La entrega es la siguiente del plan y su período empieza en la hora siguiente al fin de la anterior",
+   "rows": 0,
+   "rule_id": "V10",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Cada hora de la entrega está dentro de su período",
+   "rows": 0,
+   "rule_id": "V11",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Ninguna hora ni identificador de fila de la entrega está ya en el almacén ni repetido dentro de ella",
+   "rows": 0,
+   "rule_id": "V12",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Filas, horas y SHA-256 son los del manifiesto; solo el cierre puede no tener filas",
+   "rows": 0,
+   "rule_id": "V13",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Los agregados de cada hora son los de sus filas",
+   "rows": 0,
+   "rule_id": "V14",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Las filas de la entrega no traen columnas de laboratorio (solo la hora trae su primera fila)",
+   "rows": 0,
+   "rule_id": "V15",
+   "scope": "delivery",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 2,
+   "name_es": "Hora incompleta (se marca y se usa)",
+   "rows": 353,
+   "rule_id": "V20",
+   "scope": "hours",
+   "severity": "warning",
+   "status": "warn"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Hora con menos filas que el mínimo (no se estima)",
+   "rows": 0,
+   "rule_id": "V21",
+   "scope": "hours",
+   "severity": "warning",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 226,
+   "name_es": "Análisis interpolado (no es objetivo ni rasgo)",
+   "rows": 40680,
+   "rule_id": "V22",
+   "scope": "hours",
+   "severity": "warning",
+   "status": "warn"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 446,
+   "name_es": "Análisis repetido (no es objetivo ni rasgo)",
+   "rows": 80279,
+   "rule_id": "V23",
+   "scope": "hours",
+   "severity": "warning",
+   "status": "warn"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Alimentación que cambia dentro de la hora (se usa la primera fila)",
+   "rows": 0,
+   "rule_id": "V24",
+   "scope": "hours",
+   "severity": "warning",
+   "status": "pass"
+  },
+  {
+   "aggregation": "source",
+   "hours": 318,
+   "name_es": "Horas faltantes en la grilla",
+   "rows": 0,
+   "rule_id": "I01",
+   "scope": "source",
+   "severity": "info",
+   "status": "pass"
+  },
+  {
+   "aggregation": "latest",
+   "hours": 1344,
+   "name_es": "Horas con la alimentación sin cambio desde hace 24 h o más",
+   "rows": 241920,
+   "rule_id": "I02",
+   "scope": "hours",
+   "severity": "info",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 482,
+   "name_es": "Sensor constante dentro de la hora",
+   "rows": 86753,
+   "rule_id": "I03",
+   "scope": "hours",
+   "severity": "info",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Estimaciones emitidas",
+   "rows": 2886,
+   "rule_id": "I04",
+   "scope": "model",
+   "severity": "info",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Estimaciones sin las entradas necesarias, con el motivo",
+   "rows": 0,
+   "rule_id": "I05",
+   "scope": "model",
+   "severity": "info",
+   "status": "pass"
+  },
+  {
+   "aggregation": "latest",
+   "hours": 0,
+   "name_es": "Trampa de fuga: el MAE en V1 del elegido es menor que el umbral de alarma por el de la persistencia",
+   "rows": 0,
+   "rule_id": "M01",
+   "scope": "model",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Las columnas de la matriz son exactamente las del conjunto elegido y ninguna está prohibida",
+   "rows": 0,
+   "rule_id": "M02",
+   "scope": "model",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "El artefacto del modelo tiene la huella registrada, antes de deserializarlo",
+   "rows": 0,
+   "rule_id": "M03",
+   "scope": "model",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "per_run",
+   "hours": 0,
+   "name_es": "Estimación y rango finitos, con el rango alrededor de la estimación",
+   "rows": 0,
+   "rule_id": "M04",
+   "scope": "model",
+   "severity": "blocking",
+   "status": "pass"
+  },
+  {
+   "aggregation": "latest",
+   "hours": 0,
+   "name_es": "La configuración es la sellada (si no, todo lo calculado es posterior al sello)",
+   "rows": 0,
+   "rule_id": "M05",
+   "scope": "model",
+   "severity": "warning",
+   "status": "pass"
+  },
+  {
+   "aggregation": "latest",
+   "hours": 0,
+   "name_es": "Entrenamiento, V1 y V2 con las horas frescas mínimas",
+   "rows": 0,
+   "rule_id": "M06",
+   "scope": "model",
+   "severity": "blocking",
+   "status": "pass"
+  }
+ ],
+ "run_key": "20261117T180212267264Z",
+ "schema_version": 1,
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2",
+ "totals": {
+  "deliveries_loaded": 42,
+  "deliveries_rejected": 0,
+  "hours": 4097,
+  "missing_hours": 318,
+  "rows": 737453
+ }
+}

@@ -1,0 +1,109 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "files": [
+  {
+   "bytes": 5033,
+   "name": "dim_date.parquet",
+   "sha256": "55b21e308d089dce7a6febc4d754f094c7f6fe4d0a7dbdef7286c70b5711f67c"
+  },
+  {
+   "bytes": 68981,
+   "name": "dim_hour.parquet",
+   "sha256": "2a860a4d76715e25851bee7741edea219a1c77983e142fcb882af15d1667aae0"
+  },
+  {
+   "bytes": 1995,
+   "name": "dim_horizon.parquet",
+   "sha256": "0d681f436d87e560220aa29b1b0069b0e41c4434f5a6f9ef92d434a7931eec55"
+  },
+  {
+   "bytes": 2230,
+   "name": "dim_method.parquet",
+   "sha256": "ddd7773da23ffc7ae2b4da15c32d79aac2a39c6050094ff0ae8225952abbb8b8"
+  },
+  {
+   "bytes": 3008,
+   "name": "dim_sensor.parquet",
+   "sha256": "786078f25f841530d8087c881dc0b49a6c580c7b290c96c77157bfd8f31cccfb"
+  },
+  {
+   "bytes": 5051,
+   "name": "dim_model.parquet",
+   "sha256": "eb09fc3a0c5e6f47a0ba95531ba82ee122d18c29cefdcae0a8ff9bea42af3f4b"
+  },
+  {
+   "bytes": 7415,
+   "name": "dim_pipeline_run.parquet",
+   "sha256": "cbbcd4b636f33bc195581678df2f2f93b97cddee957d8ae4b8ebb750cba0e11d"
+  },
+  {
+   "bytes": 2062171,
+   "name": "fact_hour_process.parquet",
+   "sha256": "2007cbc184ea4800c141d6d415a975eb9efeb4ea209c12b9560bb761c78c18c2"
+  },
+  {
+   "bytes": 95839,
+   "name": "fact_hour_lab.parquet",
+   "sha256": "20ba6b8afe48812b21655f78e56399bad5521e7f2e110306b410f9ad4e2e7ef6"
+  },
+  {
+   "bytes": 161901,
+   "name": "fact_estimate.parquet",
+   "sha256": "485c84d3efa534bc756ccc399dfa9f5869776ca4d9c66f83d8593fa086a0fc68"
+  },
+  {
+   "bytes": 6199,
+   "name": "fact_method_metrics.parquet",
+   "sha256": "a6eaddcff587995b0cffc8969dfa67156c78afa9882ad987a8975c4ea93aa165"
+  },
+  {
+   "bytes": 3217,
+   "name": "fact_weekly_mae.parquet",
+   "sha256": "760759b795dd84c0e8fdccd62709694269504297af7d17ae8f25f39b114ad012"
+  },
+  {
+   "bytes": 6409,
+   "name": "fact_evaluation_summary.parquet",
+   "sha256": "35d3bc1a7764166d3dd35e256b78408f288b56724563de9fc387ac12d1d3ee6d"
+  },
+  {
+   "bytes": 3733,
+   "name": "fact_selection.parquet",
+   "sha256": "6b0ec00826a77176b7d4d8c6c41896a4c63839bdaa36bb7808b112eecc780a0c"
+  },
+  {
+   "bytes": 3923,
+   "name": "fact_sensitivity.parquet",
+   "sha256": "c89ef3fe5546db1535b7bbf9069bba5d1c0b00a7584d50bef91853c316942d7b"
+  },
+  {
+   "bytes": 1683,
+   "name": "fact_pd_curve.parquet",
+   "sha256": "14b772fc3f7148784ba971db2746f415dea80d0a5b031b2857c066d53b3b8b4e"
+  },
+  {
+   "bytes": 3717,
+   "name": "fact_variants.parquet",
+   "sha256": "f2ee465e071146d599100331b35f954cdb5ff6fd85db852eadf1d0a1f2dc990a"
+  },
+  {
+   "bytes": 3606,
+   "name": "fact_leakage.parquet",
+   "sha256": "1e08d9d86b46fe1dd6253cc6c838021815321878489ab98da7b541ec51abb592"
+  },
+  {
+   "bytes": 5186,
+   "name": "fact_data_quality.parquet",
+   "sha256": "a1f4193be6fb529ead3c914ecb52f40fff31e0a959f5e151214753608b2f6d7d"
+  },
+  {
+   "bytes": 7498,
+   "name": "fact_validation.parquet",
+   "sha256": "26ef04db45d52b5d9ffc0510df1a1ba614da681f8b90ed2078e56372497ff0d7"
+  }
+ ],
+ "run_key": "20261117T180212267264Z",
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2",
+ "version": 1
+}

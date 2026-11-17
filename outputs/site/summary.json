@@ -1,0 +1,203 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "criteria": [
+  {
+   "baseline_value": 0.519,
+   "ci_high": null,
+   "ci_low": null,
+   "id": "C01",
+   "name_es": "H0 frente a la persistencia",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "MAE(modelo) < MAE(persistencia)",
+   "value": 0.5972,
+   "verdict_es": "El modelo no supera a la persistencia en la hora que cerró: MAE 0,60 frente a 0,52."
+  },
+  {
+   "baseline_value": 0.519,
+   "ci_high": 0.1095,
+   "ci_low": 0.0481,
+   "id": "C02",
+   "name_es": "H0 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.5972,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora que cerró fuera del ruido: MAE 0,60 frente a 0,52; la diferencia va de 0,05 a 0,11."
+  },
+  {
+   "baseline_value": 0.7027,
+   "ci_high": 0.0546,
+   "ci_low": -0.0528,
+   "id": "C03",
+   "name_es": "H1 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.7034,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora que empieza fuera del ruido: MAE 0,70 frente a 0,70; la diferencia va de −0,05 a 0,05."
+  },
+  {
+   "baseline_value": 0.788,
+   "ci_high": 0.0349,
+   "ci_low": -0.0967,
+   "id": "C04",
+   "name_es": "H2 fuera del ruido frente a la base más fuerte",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(modelo) − MAE(B*) < 0",
+   "value": 0.7529,
+   "verdict_es": "El modelo no supera a la base más fuerte en la hora siguiente fuera del ruido: MAE 0,75 frente a 0,79; la diferencia va de −0,10 a 0,03."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "id": "C05",
+   "name_es": "Cobertura del rango de H0",
+   "passed": true,
+   "seen_by_planner": "en parte",
+   "seen_by_research": "no",
+   "threshold_es": "proporción de horas con el análisis dentro del rango del 80 % entre 0,75 y 0,85",
+   "value": 0.7935,
+   "verdict_es": "El rango del 80 % cumple en la hora que cerró: cubre 0,793 de las horas, y se pedía entre 0,75 y 0,85."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "id": "C06",
+   "name_es": "Sesgo de H0",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "no",
+   "threshold_es": "|media(modelo − análisis)| ≤ 0,10",
+   "value": 0.148,
+   "verdict_es": "El sesgo en la hora que cerró no cumple: el modelo estima 0,148 de más en promedio, y se pedía a lo sumo 0,10."
+  },
+  {
+   "baseline_value": 0.9241,
+   "ci_high": -0.0573,
+   "ci_low": -0.1568,
+   "id": "C07",
+   "name_es": "Los sensores solos frente a la media",
+   "passed": true,
+   "seen_by_planner": "sí",
+   "seen_by_research": "en parte",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(mejor solo con sensores) − MAE(B0) < 0",
+   "value": 0.8193,
+   "verdict_es": "Los sensores solos superan a la media del entrenamiento: MAE 0,82 frente a 0,92; la diferencia va de −0,16 a −0,06."
+  },
+  {
+   "baseline_value": 0.5178,
+   "ci_high": 0.1045,
+   "ci_low": 0.0565,
+   "id": "C08",
+   "name_es": "Los sensores agregan a la historia del laboratorio",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "en parte",
+   "threshold_es": "límite superior del intervalo del 95 % de MAE(mejor con sensores) − MAE(mejor solo con laboratorio) < 0",
+   "value": 0.5972,
+   "verdict_es": "Con sensores, el modelo no agrega a la historia del laboratorio: MAE 0,60 frente a 0,52; la diferencia va de 0,06 a 0,10."
+  },
+  {
+   "baseline_value": 0.0,
+   "ci_high": null,
+   "ci_low": null,
+   "id": "C09",
+   "name_es": "Sensibilidad estable",
+   "passed": false,
+   "seen_by_planner": "sí",
+   "seen_by_research": "sí",
+   "threshold_es": "al menos un sensor pasa la compuerta y conserva el signo de su dependencia parcial en la prueba",
+   "value": 0.0,
+   "verdict_es": "Ningún sensor pasa la compuerta de estabilidad: sin asociación estable."
+  },
+  {
+   "baseline_value": null,
+   "ci_high": null,
+   "ci_low": null,
+   "id": "C10",
+   "name_es": "Por semana y variantes (informativo)",
+   "passed": null,
+   "seen_by_planner": "sí, en V1 y V2",
+   "seen_by_research": "no",
+   "threshold_es": "sin umbral: que esté escrito y sea consistente",
+   "value": null,
+   "verdict_es": "Informativo, sin umbral: el MAE del modelo, de la persistencia y de la base más fuerte por semana y las variantes de latencia y de reajuste, escritos en el sello (2295 horas evaluadas)."
+  }
+ ],
+ "evaluation_status": "sealed",
+ "headline": {
+  "b_star": {
+   "h0": "b1_persistence",
+   "h1": "b2_rolling",
+   "h2": "b2_rolling"
+  },
+  "bias_h0": 0.148,
+  "chosen": {
+   "h0": {
+    "family": "rf",
+    "feature_set": "fSL",
+    "target": "change"
+   },
+   "h1": {
+    "family": "rf",
+    "feature_set": "fSLF",
+    "target": "level"
+   },
+   "h2": {
+    "family": "rf",
+    "feature_set": "fSL",
+    "target": "level"
+   }
+  },
+  "coverage_h0": 0.793,
+  "fresh_share": 0.836,
+  "held_hours": 446,
+  "hours": 4097,
+  "interpolated_hours": 226,
+  "latency_hours": 2,
+  "mae": {
+   "h0": {
+    "b_star": 0.519,
+    "model": 0.597,
+    "persistence": 0.519
+   },
+   "h1": {
+    "b_star": 0.703,
+    "model": 0.703,
+    "persistence": 0.675
+   },
+   "h2": {
+    "b_star": 0.788,
+    "model": 0.753,
+    "persistence": 0.78
+   }
+  },
+  "missing_hours": 318,
+  "partial_hours": 2,
+  "period_end": "2017-09-09 23:00:00",
+  "period_start": "2017-03-10 01:00:00",
+  "rows": 737453,
+  "sensors_passing_gate": 0,
+  "test_fresh_hours": 765,
+  "test_hours": 960
+ },
+ "run_key": "20261117T180212267264Z",
+ "schema_version": 1,
+ "seal": {
+  "config_sha256": "3897c741fa497f5d7cf13df42ad7118b1eb1d750e1239e74b48e71dc33846fe7",
+  "launch_run_key": "20261117T175515120901Z",
+  "test_as_of": "2017-09-10 01:00:00",
+  "test_run_key": "20261117T180212267264Z"
+ },
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2",
+ "status": "ok"
+}

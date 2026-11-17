@@ -1,0 +1,29 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "files": {
+  "algorithms.json": {
+   "bytes": 25150,
+   "sha256": "ca522c5d87585cd393f4ac2ca345b0e9e4ddb26acd24dd719cb846624ead6eab"
+  },
+  "data.json": {
+   "bytes": 3740,
+   "sha256": "75dca5311dbf3d0f8391e16e271daa74ad9109c2782f70ba2535e5f31b077439"
+  },
+  "operation.json": {
+   "bytes": 86960,
+   "sha256": "61af1c4c9d2d1616391af6d90f373abe2fe12f221f1d2ec281a450bc51898c0d"
+  },
+  "summary.json": {
+   "bytes": 6432,
+   "sha256": "3b0323eea2b7a000dd3fe09d03d45711bbaf0793ade4a63642e94ed372773c90"
+  },
+  "validation_rules.json": {
+   "bytes": 7388,
+   "sha256": "9a83fa808f2b2c5cbdc935ecc436e0cae2e326cb7518be5e8eb68760c717fe42"
+  }
+ },
+ "run_key": "20261117T180212267264Z",
+ "schema_version": 1,
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2"
+}

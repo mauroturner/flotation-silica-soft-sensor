@@ -1,0 +1,1259 @@
+{
+ "as_of": "2017-09-10 01:00:00",
+ "attribution": "Quality Prediction in a Mining Process (Kaggle, Eduardo Magalhaes Oliveira, CC0), OpenML 43311.",
+ "gate": {
+  "min_abs_spearman": 0.5,
+  "min_importance_mae": 0.01
+ },
+ "horizons": [
+  {
+   "b2_k": 3,
+   "b_star": "b1_persistence",
+   "chosen": {
+    "family": "rf",
+    "feature_set": "fSL",
+    "target": "change"
+   },
+   "horizon": 0,
+   "label_es": "La hora que cerró",
+   "methods": [
+    {
+     "ci_high_vs_b_star": 0.109,
+     "ci_low_vs_b_star": 0.048,
+     "label_es": "Modelo",
+     "mae_test": 0.597,
+     "mae_v1": 0.268,
+     "mae_v2": 0.542,
+     "method": "model"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media del entrenamiento (B0)",
+     "mae_test": 0.924,
+     "mae_v1": 0.81,
+     "mae_v2": 0.914,
+     "method": "b0_train_mean"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Persistencia (B1)",
+     "mae_test": 0.519,
+     "mae_v1": 0.474,
+     "mae_v2": 0.533,
+     "method": "b1_persistence"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media de los últimos análisis (B2)",
+     "mae_test": 0.573,
+     "mae_v1": 0.488,
+     "mae_v2": 0.547,
+     "method": "b2_rolling"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Ridge sobre sensores (B3)",
+     "mae_test": 1.183,
+     "mae_v1": 0.717,
+     "mae_v2": 0.981,
+     "method": "b3_ridge_sensors"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con sensores",
+     "mae_test": 0.819,
+     "mae_v1": 0.492,
+     "mae_v2": 0.782,
+     "method": "best_sensors_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con laboratorio",
+     "mae_test": 0.518,
+     "mae_v1": 0.444,
+     "mae_v2": 0.521,
+     "method": "best_lab_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor con sensores y laboratorio",
+     "mae_test": 0.597,
+     "mae_v1": 0.268,
+     "mae_v2": 0.542,
+     "method": "best_with_sensors"
+    }
+   ]
+  },
+  {
+   "b2_k": 3,
+   "b_star": "b2_rolling",
+   "chosen": {
+    "family": "rf",
+    "feature_set": "fSLF",
+    "target": "level"
+   },
+   "horizon": 1,
+   "label_es": "La hora siguiente",
+   "methods": [
+    {
+     "ci_high_vs_b_star": 0.055,
+     "ci_low_vs_b_star": -0.053,
+     "label_es": "Modelo",
+     "mae_test": 0.703,
+     "mae_v1": 0.435,
+     "mae_v2": 0.651,
+     "method": "model"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media del entrenamiento (B0)",
+     "mae_test": 0.924,
+     "mae_v1": 0.81,
+     "mae_v2": 0.914,
+     "method": "b0_train_mean"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Persistencia (B1)",
+     "mae_test": 0.675,
+     "mae_v1": 0.556,
+     "mae_v2": 0.669,
+     "method": "b1_persistence"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media de los últimos análisis (B2)",
+     "mae_test": 0.703,
+     "mae_v1": 0.553,
+     "mae_v2": 0.628,
+     "method": "b2_rolling"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Ridge sobre sensores (B3)",
+     "mae_test": 1.171,
+     "mae_v1": 0.701,
+     "mae_v2": 0.922,
+     "method": "b3_ridge_sensors"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con sensores",
+     "mae_test": 0.86,
+     "mae_v1": 0.496,
+     "mae_v2": 0.784,
+     "method": "best_sensors_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con laboratorio",
+     "mae_test": 0.644,
+     "mae_v1": 0.521,
+     "mae_v2": 0.641,
+     "method": "best_lab_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor con sensores y laboratorio",
+     "mae_test": 0.703,
+     "mae_v1": 0.435,
+     "mae_v2": 0.651,
+     "method": "best_with_sensors"
+    }
+   ]
+  },
+  {
+   "b2_k": 3,
+   "b_star": "b2_rolling",
+   "chosen": {
+    "family": "rf",
+    "feature_set": "fSL",
+    "target": "level"
+   },
+   "horizon": 2,
+   "label_es": "Dentro de dos horas",
+   "methods": [
+    {
+     "ci_high_vs_b_star": 0.035,
+     "ci_low_vs_b_star": -0.097,
+     "label_es": "Modelo",
+     "mae_test": 0.753,
+     "mae_v1": 0.459,
+     "mae_v2": 0.673,
+     "method": "model"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media del entrenamiento (B0)",
+     "mae_test": 0.924,
+     "mae_v1": 0.81,
+     "mae_v2": 0.914,
+     "method": "b0_train_mean"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Persistencia (B1)",
+     "mae_test": 0.78,
+     "mae_v1": 0.619,
+     "mae_v2": 0.724,
+     "method": "b1_persistence"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Media de los últimos análisis (B2)",
+     "mae_test": 0.788,
+     "mae_v1": 0.606,
+     "mae_v2": 0.687,
+     "method": "b2_rolling"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Ridge sobre sensores (B3)",
+     "mae_test": 1.049,
+     "mae_v1": 0.703,
+     "mae_v2": 0.878,
+     "method": "b3_ridge_sensors"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con sensores",
+     "mae_test": 0.889,
+     "mae_v1": 0.503,
+     "mae_v2": 0.803,
+     "method": "best_sensors_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor solo con laboratorio",
+     "mae_test": 0.713,
+     "mae_v1": 0.561,
+     "mae_v2": 0.687,
+     "method": "best_lab_only"
+    },
+    {
+     "ci_high_vs_b_star": null,
+     "ci_low_vs_b_star": null,
+     "label_es": "Mejor con sensores y laboratorio",
+     "mae_test": 0.753,
+     "mae_v1": 0.459,
+     "mae_v2": 0.673,
+     "method": "best_with_sensors"
+    }
+   ]
+  }
+ ],
+ "interval": {
+  "coverage_target": 0.8,
+  "coverage_test": 0.793,
+  "half_width": {
+   "h0": 0.854,
+   "h1": 0.97,
+   "h2": 0.973
+  }
+ },
+ "latency": [
+  {
+   "ci_high": 0.109,
+   "ci_low": 0.048,
+   "latency_hours": 2,
+   "mae_model": 0.597,
+   "mae_persistence": 0.519
+  },
+  {
+   "ci_high": 0.063,
+   "ci_low": -0.022,
+   "latency_hours": 3,
+   "mae_model": 0.696,
+   "mae_persistence": 0.675
+  },
+  {
+   "ci_high": 0.025,
+   "ci_low": -0.094,
+   "latency_hours": 4,
+   "mae_model": 0.744,
+   "mae_persistence": 0.78
+  }
+ ],
+ "leakage": {
+  "block_mae": 0.557,
+  "block_r2": 0.229,
+  "iron_control_mae_v2": 0.445,
+  "random_split_mae": 0.533,
+  "random_split_r2": 0.514,
+  "sealed_mae_v2": 0.542
+ },
+ "pd_curves": [],
+ "run_key": "20261117T180212267264Z",
+ "schema_version": 1,
+ "selection": [
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5471,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5395,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5545,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5475,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 0,
+   "mae_v1": 0.6646,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 0,
+   "mae_v1": 0.6792,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4936,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4829,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.5064,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.5192,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.4943,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.4877,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.5047,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.5157,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.4946,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.4803,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5065,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 0,
+   "mae_v1": 0.5174,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 0,
+   "mae_v1": 0.6469,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 0,
+   "mae_v1": 0.642,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": true,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4725,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4753,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4876,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 0,
+   "mae_v1": 0.4796,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.4736,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.4772,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.502,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 0,
+   "mae_v1": 0.4817,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.6491,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.6483,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.6514,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.6479,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 1,
+   "mae_v1": 0.6706,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 1,
+   "mae_v1": 0.6563,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5753,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5786,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5643,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5836,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5798,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5891,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5942,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5869,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.5885,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.579,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.5956,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 1,
+   "mae_v1": 0.588,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 1,
+   "mae_v1": 0.6588,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 1,
+   "mae_v1": 0.6518,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5709,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5672,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.567,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 1,
+   "mae_v1": 0.5608,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5814,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5718,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5687,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": true,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 1,
+   "mae_v1": 0.5596,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6982,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6924,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6954,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6927,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 2,
+   "mae_v1": 0.6841,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fS",
+   "horizon": 2,
+   "mae_v1": 0.6796,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6313,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6538,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6299,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6427,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6447,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6514,
+   "min_samples_leaf": 50,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6321,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "hgb",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6547,
+   "min_samples_leaf": 50,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6347,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6273,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6408,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fL",
+   "horizon": 2,
+   "mae_v1": 0.6316,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 2,
+   "mae_v1": 0.6667,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fS",
+   "horizon": 2,
+   "mae_v1": 0.6623,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6303,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6243,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6187,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": true,
+   "family": "rf",
+   "feature_set": "fSL",
+   "horizon": 2,
+   "mae_v1": 0.6016,
+   "min_samples_leaf": 20,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6487,
+   "min_samples_leaf": 5,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6231,
+   "min_samples_leaf": 20,
+   "target": "change"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6273,
+   "min_samples_leaf": 5,
+   "target": "level"
+  },
+  {
+   "chosen": false,
+   "family": "rf",
+   "feature_set": "fSLF",
+   "horizon": 2,
+   "mae_v1": 0.6093,
+   "min_samples_leaf": 20,
+   "target": "level"
+  }
+ ],
+ "sensitivity": [
+  {
+   "importance_v1": 0.0212,
+   "importance_v2": 0.0009,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de almidón",
+   "passes": false,
+   "sensor": "starch_flow",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0235,
+   "importance_v2": 0.0015,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de amina",
+   "passes": false,
+   "sensor": "amina_flow",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.018,
+   "importance_v2": -0.0003,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de pulpa de mineral",
+   "passes": false,
+   "sensor": "ore_pulp_flow",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.022,
+   "importance_v2": 0.0002,
+   "label_es": "sin asociación estable",
+   "name_es": "pH de la pulpa",
+   "passes": false,
+   "sensor": "ore_pulp_ph",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0199,
+   "importance_v2": 0.0005,
+   "label_es": "sin asociación estable",
+   "name_es": "Densidad de la pulpa",
+   "passes": false,
+   "sensor": "ore_pulp_density",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0183,
+   "importance_v2": 0.0028,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 1",
+   "passes": false,
+   "sensor": "air_flow_01",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0161,
+   "importance_v2": 0.0016,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 2",
+   "passes": false,
+   "sensor": "air_flow_02",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0236,
+   "importance_v2": 0.0029,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 3",
+   "passes": false,
+   "sensor": "air_flow_03",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0135,
+   "importance_v2": 0.0011,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 4",
+   "passes": false,
+   "sensor": "air_flow_04",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.016,
+   "importance_v2": -0.0,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 5",
+   "passes": false,
+   "sensor": "air_flow_05",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0251,
+   "importance_v2": 0.0009,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 6",
+   "passes": false,
+   "sensor": "air_flow_06",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0197,
+   "importance_v2": 0.0014,
+   "label_es": "sin asociación estable",
+   "name_es": "Flujo de aire de la columna 7",
+   "passes": false,
+   "sensor": "air_flow_07",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0162,
+   "importance_v2": 0.0008,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 1",
+   "passes": false,
+   "sensor": "level_01",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0154,
+   "importance_v2": 0.001,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 2",
+   "passes": false,
+   "sensor": "level_02",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0204,
+   "importance_v2": 0.0017,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 3",
+   "passes": false,
+   "sensor": "level_03",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0159,
+   "importance_v2": 0.0002,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 4",
+   "passes": false,
+   "sensor": "level_04",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0162,
+   "importance_v2": 0.0016,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 5",
+   "passes": false,
+   "sensor": "level_05",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.0191,
+   "importance_v2": 0.0013,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 6",
+   "passes": false,
+   "sensor": "level_06",
+   "sign_stable": false,
+   "test_sign_kept": null
+  },
+  {
+   "importance_v1": 0.017,
+   "importance_v2": 0.0017,
+   "label_es": "sin asociación estable",
+   "name_es": "Nivel de la columna 7",
+   "passes": false,
+   "sensor": "level_07",
+   "sign_stable": false,
+   "test_sign_kept": null
+  }
+ ],
+ "source_sha256": "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2"
+}
