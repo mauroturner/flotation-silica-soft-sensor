@@ -19,6 +19,8 @@ testpaths = ["tests"]
 # "src" makes the package importable without installing it; "." makes tests.fixtures importable.
 pythonpath = ["src", "."]
 addopts = "-ra --strict-markers --import-mode=importlib --durations=10 -m 'not real_data and not docker'"
+# Starlette 1.10 prefers httpx2 for its test client and warns once, on import, that it falls back to httpx; the plan pins httpx (decision D45), so only that message is left out.
+filterwarnings = ["ignore:Using .httpx. with .starlette.testclient. is deprecated:Warning"]
 markers = [
     "real_data: needs the real ARFF file in data/raw/ (not selected by default)",
     "docker: needs Docker (not selected by default)",

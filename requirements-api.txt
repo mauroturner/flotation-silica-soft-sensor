@@ -1,3 +1,21 @@
-# The estimation API's dependencies (decisions D27 and D37). Outside the Airflow image: the Dockerfile installs requirements.txt only (D28).
-# No direct pins until U19 adds fastapi, pydantic and uvicorn at the latest stable version of that day.
+# The estimation API's dependencies (decisions D27, D37 and D45). Outside the Airflow image: the Dockerfile installs requirements.txt only (D28).
+# Each direct pin is the newest stable release that was at least 14 days old on 2026-11-17 (the day of U19), with its upload date from
+# https://pypi.org/pypi/<name>/json in decision D45; the transitive pins are the newest releases of the same age that what they require allows.
+# fastapi 0.162.0 requires opentelemetry-api as a base dependency (not an extra), so it is pinned below with typing_extensions, which it requires.
 -r requirements.txt
+fastapi==0.162.0
+pydantic==2.14.2
+uvicorn==0.54.0
+# transitive
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.16.0
+click==8.5.0
+colorama==0.4.6
+h11==0.16.0
+idna==3.20
+opentelemetry-api==1.45.2
+pydantic_core==2.50.2
+starlette==1.10.0
+typing_extensions==4.16.0
+typing-inspection==0.4.4

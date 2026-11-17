@@ -8,8 +8,12 @@ its run or because another writer holds the data folder), 3 the delivery or the 
 with 2 before anything is written: no option is ignored in silence (AC32). Every relative path of ``--config`` and of ``make-fixture`` is taken from ``$FLOTSILICA_HOME`` or
 the project folder, never from the working directory (AC33). ``main(argv)`` is the entry the tests use, in the same process.
 
-The top-level help imports only the configuration: the pipeline (scikit-learn) is imported by the commands that run tasks, and ``serve`` (U19) will import the API only in its
-own branch. A new command is a ``commands.add_parser`` in ``build_parser`` and a branch of ``_execute``.
+``serve`` (U19, plan section 18) runs the estimation API of the sealed model on ``127.0.0.1`` and nothing else: it has no task, writes nothing and, with a ``--host`` other than the
+loopback address or a port out of range, exits with 2 before the configuration is read or the API imported. It exits with 2 too when there is no model to serve (no seal, another
+configuration than the sealed one, an artifact that is not the registered one).
+
+The top-level help imports only the configuration: the pipeline (scikit-learn) is imported by the commands that run tasks, and ``serve`` imports the API and the server only in its
+own branch. A new command is a ``commands.add_parser`` in ``build_parser`` and a branch of ``_execute`` (``serve``, which runs no task, is a branch of ``main``).
 """
 
 from __future__ import annotations
@@ -22,7 +26,7 @@ import traceback
 from pathlib import Path
 
 from flotsilica import texts
-from flotsilica.config import DEFAULT_PROJECT_ROOT, ENV_CONFIG, ENV_HOME, load_config
+from flotsilica.config import DEFAULT_PROJECT_ROOT, ENV_CONFIG, ENV_HOME, LOOPBACK_HOST, load_config
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE, EXIT_REJECTED = 0, 1, 2, 3
 SIGNALS = ("none", "sensor_signal", "lab_only")
@@ -75,6 +79,13 @@ def build_parser(task_ids: tuple[str, ...] | None = None) -> argparse.ArgumentPa
     fixture.add_argument("--signal", choices=SIGNALS, default="none",
                          help="sensor_signal: la sílice suma un término del flujo de amina (control positivo); lab_only: los sensores son ruido (control negativo)")
     fixture.add_argument("--weeks", type=int, help="corta el archivo a las primeras N semanas (por defecto, el calendario completo)")
+
+    serve = commands.add_parser("serve", parents=[common], help=f"levanta la API local de estimación en {LOOPBACK_HOST} (GET /health y POST /estimate), de solo lectura",
+                                description="Sirve el modelo sellado con FastAPI y uvicorn: GET /health dice qué modelo y qué configuración sirve y POST /estimate da las tres estimaciones de una hora "
+                                            "con su rango, con la misma función que el flujo. No escribe nada y solo escucha en la interfaz local.")
+    serve.add_argument("--host", default=LOOPBACK_HOST, metavar="DIRECCIÓN",
+                       help=f"interfaz en la que escucha: solo {LOOPBACK_HOST} (por defecto); otra sale con 2 antes de cargar nada")
+    serve.add_argument("--port", type=int, metavar="N", help="puerto, de 1 a 65535 (por defecto el [api] port de la configuración)")
 
     commands.add_parser("figures", parents=[common], help="dibuja las siete figuras de la documentación desde los archivos del sitio verificados de la última corrida")
     commands.add_parser("docs-sync", parents=[common], help=f"copia el resumen de resultados (reports/{SUMMARY_MD}) en el bloque de resultados del README")
@@ -211,6 +222,36 @@ def _execute(args: argparse.Namespace, cfg, pipeline) -> int:
     return EXIT_OK
 
 
+def _serve(args: argparse.Namespace) -> int:
+    """``serve``: the refusals that need nothing loaded first (the host and the port), then the configuration, then the app of the sealed model, then the server."""
+    try:
+        if args.host != LOOPBACK_HOST:
+            raise _UsageError(texts.serve_host_refused(args.host, LOOPBACK_HOST))
+        if args.port is not None and not 1 <= args.port <= 65535:
+            raise _UsageError(texts.serve_port_refused(args.port))
+        cfg = load_config(args.config)
+    except (_UsageError, ValueError, FileNotFoundError) as error:
+        _fail(f"error: {error}")
+        return EXIT_USAGE
+    from flotsilica.api import ApiStartError, create_app      # the API, its libraries and the model are loaded only here
+    from flotsilica.registry import ArtifactError, SealError
+
+    try:
+        app = create_app(cfg)
+    except (ApiStartError, ArtifactError, SealError) as error:   # there is no model to serve: nothing was written and no server was started
+        _fail(f"error: {error}")
+        return EXIT_USAGE
+    except Exception as error:   # an artifact with the registered hash that is not a model, for one
+        _fail(f"falló: {type(error).__name__}: {error}")
+        if args.verbose:
+            _fail("".join(traceback.format_exception(error)).rstrip())
+        return EXIT_FAILED
+    import uvicorn
+
+    uvicorn.run(app, host=cfg.api.host, port=cfg.api.port if args.port is None else args.port, log_level="info" if args.verbose else "warning")
+    return EXIT_OK
+
+
 def _command_of(argv: list[str]) -> str | None:
     return next((a for a in argv if not a.startswith("-")), None)
 
@@ -227,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit as stop:   # argparse exits on a wrong option (2) and on --help (0)
         return int(stop.code or 0)
     _configure_logging(getattr(args, "verbose", False))
+    if args.command == "serve":
+        return _serve(args)
     if args.command == "make-fixture":
         try:
             return _make_fixture(args)

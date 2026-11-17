@@ -26,6 +26,9 @@ API_FILES = {"src/flotsilica/api.py", "src/flotsilica/cli.py"}
 PIN = re.compile(r"([A-Za-z0-9][A-Za-z0-9_.-]*)==([A-Za-z0-9_.+!-]+)")
 REQUIREMENT_NAME = re.compile(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)")
 REQUIREMENT_FILES = ("requirements.txt", "requirements-api.txt", "requirements-dev.txt")
+# U19: the API's direct pins and the one of its test client (decision D45: the newest stable release at least 14 days old on 2026-11-17)
+API_PINS = {"fastapi": "0.162.0", "pydantic": "2.14.2", "uvicorn": "0.54.0"}
+API_CLIENT_PIN = "0.28.1"
 
 
 def normalize(name: str) -> str:
@@ -237,11 +240,9 @@ def test_the_scope_of_each_file_api_and_cli_take_the_api_pins_and_no_other_runti
         "research/s99_probe.py": "import numpy\nimport common\nimport httpx\n",
         "research/common.py": "import pandas\n",
     })
-    # fastapi, uvicorn and httpx are the API's pins from U19 on; this file's job is the rule, so the probe declares them itself
-    api_lines = ["-r requirements.txt", "fastapi==0.1.0", "uvicorn==0.1.0"]
+    # this test's job is the rule, not the versions: the probe declares its own API file (httpx stays the project's own pin of requirements-dev.txt)
+    api_lines = ["-r requirements.txt", "fastapi==0.1.0", "uvicorn==0.1.0", TRANSITIVE_MARKER, "colorama==0.4.6"]
     (probe / "requirements-api.txt").write_text("\n".join(api_lines) + "\n", encoding="utf-8")
-    dev = probe / "requirements-dev.txt"
-    dev.write_text(dev.read_text(encoding="utf-8").replace(TRANSITIVE_MARKER, "httpx==0.1.0\n" + TRANSITIVE_MARKER), encoding="utf-8")
     assert distribution_of("no_such_module_xyz") == "no-such-module-xyz" and distribution_of("sklearn") == "scikit-learn"
     monkeypatch.setattr(sys.modules[__name__], "distribution_of", normalize)
     assert dependency_problems(probe) == [
@@ -290,7 +291,26 @@ def test_the_pins_are_project_04s_set_without_what_only_openpyxl_and_shap_needed
     assert not {"openpyxl", "shap", "et-xmlfile", "numba", "llvmlite", "slicer", "tqdm", "typing-extensions"} & set(runtime.all)
     assert runtime.transitive["cloudpickle"] == "3.1.2" and "cloudpickle" in required_names("joblib")
     dev = read_pins(PROJECT / "requirements-dev.txt")
-    assert dev.direct == {"pytest": "9.2.0"}
+    assert dev.direct == {"pytest": "9.2.0", "httpx": API_CLIENT_PIN}
+
+
+def test_the_api_pins_are_the_newest_stable_releases_that_were_at_least_14_days_old_on_the_day_of_u19():
+    """D37 and D45: fastapi, pydantic and uvicorn are direct pins of requirements-api.txt and httpx, the client of FastAPI's test client, of
+    requirements-dev.txt; pydantic-core is the one pydantic requires, and the versions are the ones decision D45 records with their dates."""
+    pins = all_pins(PROJECT)
+    api, dev = pins["requirements-api.txt"], pins["requirements-dev.txt"]
+    assert api.direct == API_PINS and dev.direct["httpx"] == API_CLIENT_PIN
+    assert f"pydantic-core=={api.transitive['pydantic-core']}" in importlib.metadata.requires("pydantic")
+    decision = (PROJECT / "docs" / "decisions.md").read_text(encoding="utf-8")
+    for name, version in {**API_PINS, "httpx": API_CLIENT_PIN}.items():
+        assert f"`{name}` {version}" in decision, f"decision D45 does not record {name} {version}"
+
+
+@pytest.mark.parametrize("name", ["pydantic", "uvicorn", "httpx"])
+def test_a_direct_pin_the_landing_does_not_declare_has_its_row_with_this_project_in_landing_expansion(name):
+    """AC38, D36: FastAPI is on the landing (S5); pydantic, uvicorn and httpx are not, so each has a row of the table that names project 05."""
+    rows = [line for line in (PROJECT.parent / "LANDING-EXPANSION.md").read_text(encoding="utf-8").splitlines() if line.startswith(f"| {name} |")]
+    assert len(rows) == 1 and "05 Sílice sin laboratorio" in rows[0]
 
 
 def test_every_transitive_pin_is_required_by_another_pin():

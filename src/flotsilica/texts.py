@@ -226,3 +226,43 @@ def fixture_without_tests_tree(root: object) -> str:
 
 def fixture_written(path: object, rows: int, hours: int, seed: int, signal: str) -> str:
     return f"escribí {path}: {rows} filas en {hours} horas (semilla {seed}, señal {signal})"
+
+
+# --- the estimation API and ``serve`` (U19, plan section 18): what a refusal says, in the body of a 422 and on the terminal ------------------------------------------
+
+NOTHING_ESTIMATED = "No se estimó nada."
+
+
+def api_refusal(code: str, *, field: str | None = None, issue_at: object = None, found: int = 0, minimum: int = 0) -> str:
+    """The message of a 422 of ``POST /estimate`` by its code (``api.py``): it names the field and the instants of the request and never a path of this machine."""
+    where = "el cuerpo" if field is None else field
+    messages = {
+        "invalid_request": f"el cuerpo no cumple el formato de la solicitud: los campos que fallan van en la lista «fields». {NOTHING_ESTIMATED}",
+        "not_on_the_hour": f"{where} debe ser un instante en punto, sin minutos, segundos ni fracciones. {NOTHING_ESTIMATED}",
+        "duplicate_sample_hour": f"{where} repite la hora de la muestra de otro análisis: cada hora tiene un solo análisis. {NOTHING_ESTIMATED}",
+        "analysis_after_issue": f"{where} llega después del instante de emisión, {issue_at}: en ese instante todavía no se conocía. {NOTHING_ESTIMATED}",
+        "short_lab_history": f"a {issue_at} habían llegado {found} análisis nuevos y hacen falta al menos {minimum}. {NOTHING_ESTIMATED}",
+        "estimate_refused": f"el modelo no pudo dar una estimación finita con estas entradas. {NOTHING_ESTIMATED}",
+    }
+    return messages[code]
+
+
+def api_without_seal() -> str:
+    return f"no hay sello del lanzamiento: la API solo sirve el modelo sellado, y sin lanzamiento no hay modelo (python -m flotsilica run). {NOTHING_WRITTEN}"
+
+
+def api_other_configuration() -> str:
+    return (f"la configuración actual no es la sellada (otra configuración): la API daría estimaciones distintas de las del flujo. Se vuelve a la configuración sellada o se "
+            f"vuelve a lanzar. {NOTHING_WRITTEN}")
+
+
+def api_warehouse_unreadable(name: str) -> str:
+    return f"no se puede abrir el almacén {name} para leerlo: la API lo abre solo para leer el registro del modelo. {NOTHING_WRITTEN}"
+
+
+def serve_host_refused(host: str, allowed: str) -> str:
+    return f"serve solo escucha en {allowed} (D27), no en {host!r}: el servicio no se publica fuera del equipo. {NOTHING_WRITTEN}"
+
+
+def serve_port_refused(port: int) -> str:
+    return f"--port: se esperaba un puerto de 1 a 65535, se recibió {port}. {NOTHING_WRITTEN}"

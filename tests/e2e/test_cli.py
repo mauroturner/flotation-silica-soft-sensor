@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib.abc
 import importlib.util
 import json
+import contextlib
 import logging
 import os
 import shutil
@@ -230,11 +231,41 @@ def docs_sync(project):
     assert "ya estaba al día" in again.out and readme.read_text(encoding="utf-8") == text
 
 
+@contextlib.contextmanager
+def uvicorn_calls():
+    """``uvicorn.run`` replaced by a recorder of ``(app, options)``: ``serve`` runs the real app of the project, only the server that would block is left out."""
+    calls = []
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("uvicorn.run", lambda app, **options: calls.append((app, options)))
+        yield calls
+
+
+def serve_port(project):
+    from fastapi import testclient
+
+    project("replay")
+    with uvicorn_calls() as calls:
+        ok(cli("serve", *Q))
+        ok(cli("serve", *Q, "--port", "8123"))
+    assert [(options["host"], options["port"]) for _app, options in calls] == [("127.0.0.1", 8000), ("127.0.0.1", 8123)], "the default is the [api] port of the configuration"
+    health = testclient.TestClient(calls[0][0]).get("/health")
+    assert health.status_code == 200 and health.json()["status"] == "ok" and health.json()["seal"] == "launch", "the app that was handed to the server is the one of the sealed model"
+
+
+def serve_host(project):
+    project("replay")
+    with uvicorn_calls() as calls:
+        ok(cli("serve", *Q, "--host", "127.0.0.1"))
+        refused = cli("serve", *Q, "--host", "0.0.0.0")
+    assert [options["host"] for _app, options in calls] == ["127.0.0.1"], "the loopback address is accepted, any other one never reaches the server"
+    assert refused.code == 2 and "127.0.0.1" in refused.err and refused.out == ""
+
+
 OPTIONS = {
     "--config": config, "-v": verbose, "run --only": only, "run --from": start, "run --run-key": run_key, "replay --until": until, "task TAREA": task,
     "task --run-key": task_run_key, "make-fixture SALIDA.arff": make_fixture_output, "make-fixture --rows-per-hour": make_fixture_rows_per_hour,
     "make-fixture --seed": make_fixture_seed, "make-fixture --signal": make_fixture_signal, "make-fixture --weeks": make_fixture_weeks, "figures": figures,
-    "docs-sync": docs_sync,
+    "docs-sync": docs_sync, "serve --host": serve_host, "serve --port": serve_port,
 }
 
 
@@ -288,6 +319,47 @@ def test_incompatible_options_exit_2_before_writing(project, tmp_path, args, say
     assert fingerprint(tmp_path) == before and list(Path.cwd().iterdir()) == [], "nothing written, in the project, beside it or in the working directory"
     assert sorted(p for p in tmp_path.rglob("*") if p.is_dir()) == folders, "and no folder made for it"
     assert not (home.parent / "outside.arff").exists()
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "localhost", "::1", "192.168.0.7", "127.0.0.2", ""])
+def test_serve_refuses_a_host_other_than_loopback_before_loading(project, monkeypatch, tmp_path, host):
+    """AC28, D27: the service never listens outside this machine, and the refusal comes before the configuration is read, the API is imported or a model is loaded."""
+    project("replay")
+
+    def loaded(*args, **kwargs):
+        raise AssertionError("something was loaded before the host was refused")
+
+    monkeypatch.setattr("flotsilica.cli.load_config", loaded)
+    monkeypatch.setattr("flotsilica.api.create_app", loaded)
+    monkeypatch.setattr("uvicorn.run", loaded)
+    monkeypatch.delitem(sys.modules, "flotsilica.api")      # an import of the API in the refusal would bring it back
+    before = fingerprint(tmp_path)
+    result = cli("serve", "--host", host)
+    assert result.code == 2 and "127.0.0.1" in result.err and result.out == "", (result.code, result.out, result.err)
+    assert "flotsilica.api" not in sys.modules and fingerprint(tmp_path) == before and list(Path.cwd().iterdir()) == []
+
+
+@pytest.mark.parametrize("port", ["0", "-1", "65536"])
+def test_serve_refuses_a_port_outside_1_to_65535_before_loading(project, monkeypatch, tmp_path, port):
+    project("replay")
+    monkeypatch.setattr("flotsilica.cli.load_config", lambda *args: pytest.fail("the configuration was read before the port was refused"))
+    before = fingerprint(tmp_path)
+    result = cli("serve", "--port", port)
+    assert result.code == 2 and "1 a 65535" in result.err and result.out == "" and fingerprint(tmp_path) == before
+
+
+def test_serve_without_a_model_to_serve_exits_2_says_why_and_starts_no_server(project, tmp_path):
+    """No seal (a clean clone), and a model file that is not the registered one: each is a refusal of the start with 2, not a server that cannot answer."""
+    home = project()
+    before = fingerprint(home)
+    with uvicorn_calls() as calls:
+        clean = cli("serve", *Q)
+        replayed = project("replay", name="replayed")
+        artifact = next((quick(replayed) / "models").rglob("*.pkl"))
+        artifact.write_bytes(artifact.read_bytes() + b"\0")
+        altered = cli("serve", *Q)
+    assert (clean.code, clean.out, "no hay sello" in clean.err) == (2, "", True) and fingerprint(home) == before
+    assert (altered.code, altered.out, "M03" in altered.err) == (2, "", True) and calls == []
 
 
 def test_docs_sync_without_the_summary_or_without_its_markers_exits_2_and_leaves_the_readme_as_it_was(project):
@@ -387,7 +459,7 @@ def test_module_entry_point_runs_from_another_directory(tmp_path):
     env.pop(ENV_HOME, None)
     done = subprocess.run([sys.executable, "-m", "flotsilica", "--help"], cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8", timeout=120)
     assert done.returncode == 0, done.stderr
-    for command in ("run", "replay", "task", "make-fixture", "figures", "docs-sync"):
+    for command in ("run", "replay", "task", "make-fixture", "figures", "docs-sync", "serve"):
         assert command in done.stdout, command
     assert list(tmp_path.iterdir()) == []
 
