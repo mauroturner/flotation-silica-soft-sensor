@@ -157,6 +157,12 @@ def test_the_inputs_the_response_says_it_used_are_the_ones_of_the_body(served, v
     assert without_feed["inputs"]["feed"] is False and without_feed["persistence"] == document["persistence"] == valid["lab_history"][-1]["silica_pct"]
 
 
+def test_a_lab_history_in_any_order_gives_the_response_of_the_ordered_one(served, valid):
+    ordered = post(served, valid).json()
+    for name, history in {"reversed": valid["lab_history"][::-1], "newest first": valid["lab_history"][-1:] + valid["lab_history"][:-1]}.items():
+        assert post(served, {**valid, "lab_history": history}).json() == ordered, name
+
+
 def test_a_partial_hour_gets_the_reason_the_pipeline_gives_and_no_number(served, valid, scored):
     few = valid["readings"][: served.cfg.hours.min_rows_per_hour - 1]
     response = post(served, {**valid, "readings": few})
