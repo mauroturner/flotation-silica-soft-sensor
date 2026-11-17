@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 SQL_DIR = Path(__file__).resolve().parents[2] / "sql"
 CHECK_GROUPS = ("load", "model")
+MART_GROUPS = ("powerbi",)
 SAMPLE_LIMIT = 5
 BUSY_TIMEOUT_MS = 30_000   # an overlapping writer waits this long for the write lock before failing (runbook R8)
 STAGING = ("staging/stg_hours.sql",)
@@ -213,6 +214,22 @@ def apply_schema(conn: sqlite3.Connection) -> None:
     for path in sorted((SQL_DIR / "schema").glob("*.sql")):
         _check_no_drift(conn, path)
         run_sql_file(conn, path)
+
+
+# --- marts -----------------------------------------------------------------------------------------------------------------
+
+
+def rebuild_marts(conn: sqlite3.Connection, group: Literal["powerbi"], params: Mapping[str, object] | None = None) -> list[str]:
+    """Rebuild the marts of a group (``sql/marts/<group>/mart_*.sql``, in file-name order) inside the caller's transaction: each file drops its table and creates it
+    again from the tables it reads, so a rollback undoes it too. Returns the names of the files run."""
+    if group not in MART_GROUPS:
+        raise ValueError(f"grupo de marts desconocido: {group!r}; se esperaba uno de {', '.join(MART_GROUPS)}")
+    if not conn.in_transaction:
+        raise RuntimeError("los marts se reconstruyen dentro de una transacción abierta, para que una falla los deshaga")
+    paths = sorted((SQL_DIR / "marts" / group).glob("mart_*.sql"))
+    for path in paths:
+        run_sql_file(conn, path, params)
+    return [path.stem for path in paths]
 
 
 # --- controls --------------------------------------------------------------------------------------------------------------

@@ -224,7 +224,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: es lo que vería la planta y no cambia nada sellado: el modelo, el rango, B* y la compuerta se congelan en el lanzamiento.
 - **Afecta**: `tracking.py`; RF17; `fact_estimate`; la página 1 del tablero.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U13 (2026-11-17): `tracking_at` une solo las estimaciones con números cuyo análisis llegó (`available_at ≤ as_of`, la llegada inclusiva) y, si el análisis es repetido o interpolado, deja la fila con su estado y sin error (D05); `track` reconstruye la tabla entera en cada corrida. No filtra por `issue_at` porque con una espera de al menos una hora la estimación siempre se emite antes de que llegue su análisis. Pregunta abierta para quien planifica: ninguna.
 
 ## D23 Validación: qué bloquea, qué se marca y qué se informa; las reglas acumuladas se leen una vez
 
@@ -254,7 +254,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: una sola especificación alimenta el esquema, el diccionario y el HTML, y las pruebas lo comparan.
 - **Afecta**: `export.py`, `dashboard/`; RF21, RF22; AC25, AC26.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U13 (2026-11-17): el modelo estrella sale **como estaba en el instante de la corrida** (una hora que no había cerrado, una estimación no emitida y un análisis que no había llegado no están en las tablas: `dim_hour` suma los estados `pending` y `missing` a los tres del plan, y `fact_hour_lab` no trae ningún valor del laboratorio hasta su llegada); B* no es una fila de las tablas de métricas, es la regla que es con `is_b_star`; las tablas de evaluación son las de la corrida que las escribió. `export_star_schema` recibe además la vista sellada y la ruta del sello, y el conjunto lleva `manifest.json` (RNF05). `fact_hour_process`, el hecho más grande, pesa 1,88 MB con el accesorio sintético completo. Pregunta abierta para quien planifica: si B3 (ridge sobre sensores) es una «regla» o una «comparación»; se la clasificó como comparación.
 
 ## D26 Exportación para el sitio, con manifiesto
 

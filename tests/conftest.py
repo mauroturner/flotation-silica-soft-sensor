@@ -309,3 +309,37 @@ def small_history_one_batch(tmp_path_factory: pytest.TempPathFactory, small_laun
     from tests.fixtures.history import PLAN_B, extend_history
 
     return extend_history(small_launched, tmp_path_factory.mktemp("history_b") / "h", small_canonical, PLAN_B[1:])
+
+
+# --- the star model of the small history (U13) --------------------------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def star_files(tmp_path_factory: pytest.TempPathFactory, small_history):
+    """The star model exported once from a copy of the small history at the instant of its last run (``track`` first, as the pipeline does): ``history`` (the copy, with
+    the ``star_*`` tables), ``run``, ``out_dir`` and ``paths``. A test that writes works on ``copy_history`` of ``history`` or ``copy_of(out_dir)``."""
+    from flotsilica.dashboard.semantic_model import MODEL
+    from flotsilica.export import export_star_schema
+    from flotsilica.tracking import track
+    from flotsilica.warehouse import connect
+    from tests.fixtures.history import copy_history, stamp
+
+    folder = tmp_path_factory.mktemp("star")
+    history = copy_history(small_history, folder / "history")
+    run = history.runs[-1]
+    out_dir = folder / "powerbi"
+    conn = connect(history.paths.db)
+    try:
+        # what the pipeline writes about its runs and their validation (U17), by hand: the runs of the history and four results of the last one, one of each severity and status
+        for meta, issued in zip(history.runs, history.results, strict=True):
+            conn.execute("INSERT INTO pipeline_runs (run_key, started_at, finished_at, status, delivery_id, as_of, source_sha256, rows_delivery, estimates_issued, estimates_missing) "
+                         "VALUES (?, ?, ?, 'ok', ?, ?, ?, 0, ?, 0)", (meta.run_key, stamp(meta.as_of), stamp(meta.as_of), meta.delivery_id, stamp(meta.as_of),
+                                                                    history.sealed.source_sha256, issued.issued))
+        conn.executemany("INSERT INTO validation_results VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]')", [
+            (run.run_key, "V10", "Regla bloqueante que pasa", "blocking", "delivery", "per_run", 1, 0, 0), (run.run_key, "V11", "Regla bloqueante que falla", "blocking", "delivery", "per_run", 0, 5, 2),
+            (run.run_key, "V22", "Advertencia que advierte", "warning", "hours", "per_run", 0, 3, 1), (run.run_key, "I02", "Informativa", "info", "hours", "latest", 1, 10, 4)])
+        track(conn, run, history.sealed)
+        paths = export_star_schema(conn, out_dir, MODEL, run, history.sealed, seal_path=history.paths.seal)
+    finally:
+        conn.close()
+    return types.SimpleNamespace(history=history, run=run, out_dir=out_dir, paths=paths)

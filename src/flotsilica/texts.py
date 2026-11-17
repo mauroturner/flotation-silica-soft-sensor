@@ -39,6 +39,27 @@ METHODS_ES: dict[str, str] = {
     "b2_rolling": "Media de los últimos análisis (B2)", "b3_ridge_sensors": "Ridge sobre sensores (B3)", "best_sensors_only": "Mejor solo con sensores",
     "best_lab_only": "Mejor solo con laboratorio", "best_with_sensors": "Mejor con sensores y laboratorio",
 }
+# The labels of the star model (U13, plan section 19): the names that the tables of ``outputs/powerbi`` and the report show, in Spanish.
+HORIZON_LABELS_ES = {0: "La hora que cerró", 1: "La hora siguiente", 2: "Dentro de dos horas"}      # from the hour that closed: H1 is its next hour, H2 two hours after
+METHOD_KINDS_ES = {"model": "modelo", "b0_train_mean": "regla", "b1_persistence": "regla", "b2_rolling": "regla", "b3_ridge_sensors": "comparación",
+                   "best_sensors_only": "comparación", "best_lab_only": "comparación", "best_with_sensors": "comparación"}
+BLOCKS_ES = {"train": "Entrenamiento", "purge_1": "Purga entre entrenamiento y V1", "valid_v1": "Validación V1", "purge_v": "Purga entre V1 y V2", "valid_v2": "Validación V2",
+             "purge_2": "Purga entre V2 y la prueba", "test": "Prueba", "outside": "Fuera de los bloques"}
+LAB_STATES_ES = {"fresh": "Análisis nuevo", "interpolated": "Interpolado", "held": "Repetido", "pending": "Llega más tarde", "missing": "Sin datos"}
+TARGETS_ES = {"level": "El nivel de la sílice", "change": "El cambio respecto del último análisis"}
+TRAINED_ON_ES = "Entrenamiento y V1"
+VARIANTS_ES = {"latency_3": "Con 3 horas de espera del laboratorio", "latency_4": "Con 4 horas de espera del laboratorio", "refit_all": "Reajuste con toda la validación",
+               "all_hours": "Todas las horas con análisis, nuevo o no"}
+SENSOR_UNIT_ES = "sin unidad en la fuente"
+SENSOR_GROUPS_ES = {"reactivos": ("starch_flow", "amina_flow"), "pulpa": ("ore_pulp_flow", "ore_pulp_ph", "ore_pulp_density"),
+                    "aire": tuple(f"air_flow_0{k}" for k in range(1, 8)), "nivel": tuple(f"level_0{k}" for k in range(1, 8))}
+SENSORS_ES = {"starch_flow": "Flujo de almidón", "amina_flow": "Flujo de amina", "ore_pulp_flow": "Flujo de pulpa de mineral", "ore_pulp_ph": "pH de la pulpa",
+              "ore_pulp_density": "Densidad de la pulpa", **{f"air_flow_0{k}": f"Flujo de aire de la columna {k}" for k in range(1, 8)},
+              **{f"level_0{k}": f"Nivel de la columna {k}" for k in range(1, 8)}}
+MONTHS_ES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
+WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")      # ISO order: Monday is 1
+
+
 HORIZONS_ES = {0: "la hora que cerró (H0)", 1: "la hora que empieza (H1)", 2: "la hora siguiente (H2)"}
 WHERE_ES = {0: "en la hora que cerró", 1: "en la hora que empieza", 2: "en la hora siguiente"}
 

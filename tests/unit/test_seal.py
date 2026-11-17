@@ -98,7 +98,7 @@ def test_the_sealed_document_has_exactly_the_fingerprinted_keys_and_the_source_h
 
 
 def test_sealed_calculations_receive_only_the_sealed_view():
-    sealed = ("hours", "split", "features", "baselines", "model", "intervals", "scoring", "evaluation", "variants", "sensitivity", "launch")
+    sealed = ("hours", "split", "features", "baselines", "model", "intervals", "scoring", "evaluation", "variants", "sensitivity", "launch", "tracking", "export")
     for name in sealed:
         path = SRC / f"{name}.py"
         if not path.exists():

@@ -54,6 +54,28 @@ CREATE TABLE IF NOT EXISTS method_estimates (
     FOREIGN KEY (target_hour, horizon) REFERENCES estimates (target_hour, horizon)
 );
 
+-- The tracking (plan, sections 5 and 17; D22): what the control room sees at the instant of a run, each issued estimate that has an analysis that had arrived (``as_of`` is
+-- the instant; the arrival is inclusive) with that analysis and the error of the model, of the persistence and of B*. It is derived from ``estimates`` and ``lab_hours``,
+-- so it is rebuilt whole in every run (``tracking.track``) and is not insert-only: nothing that was issued lives here. An analysis that is not fresh (held or interpolated)
+-- is no measurement (D05): its row has its state and no actual, no error and no coverage.
+CREATE TABLE IF NOT EXISTS tracking (
+    target_hour TEXT NOT NULL,
+    horizon INTEGER NOT NULL,
+    as_of TEXT NOT NULL,
+    run_key TEXT NOT NULL,
+    actual REAL,
+    lab_state TEXT NOT NULL CHECK (lab_state IN ('fresh', 'interpolated', 'held')),
+    abs_error REAL,
+    abs_error_persistence REAL,
+    abs_error_b_star REAL,
+    covered INTEGER CHECK (covered IN (0, 1)),
+    PRIMARY KEY (target_hour, horizon),
+    FOREIGN KEY (target_hour, horizon) REFERENCES estimates (target_hour, horizon),
+    CHECK ((lab_state = 'fresh') = (actual IS NOT NULL)),
+    CHECK ((actual IS NULL) = (abs_error IS NULL) AND (actual IS NULL) = (abs_error_persistence IS NULL) AND (actual IS NULL) = (abs_error_b_star IS NULL)
+           AND (actual IS NULL) = (covered IS NULL))
+);
+
 CREATE TRIGGER IF NOT EXISTS model_registry_no_update BEFORE UPDATE ON model_registry
 BEGIN SELECT RAISE(ABORT, 'model_registry es de solo inserción: una versión del modelo registrada no se cambia'); END;
 
