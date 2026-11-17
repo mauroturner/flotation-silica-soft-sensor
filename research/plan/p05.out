@@ -1,0 +1,9 @@
+train: hours with value=1673 interpolated=139 held=165 fresh=1369
+valid_v1: hours with value=696 interpolated=8 held=58 fresh=630
+valid_v2: hours with value=696 interpolated=12 held=87 fresh=597
+H=0 rf_fSLF_change_msl20 fit on train only: rows=1345 V2 MAE=0.5415 bias=+0.1099 | persistence 0.5329 CI(model-pers) [-0.0087, +0.0277] | mean3 0.5470 CI(model-mean3) [-0.0466, +0.0345]
+H=0 rf_fSLF_change_msl20 fit on train + V1: rows=1975 V2 MAE=0.5372 bias=+0.1035 | persistence 0.5329 CI(model-pers) [-0.0190, +0.0285] | mean3 0.5470 CI(model-mean3) [-0.0532, +0.0326]
+H=1 rf_fSL_level_msl20 fit on train only: rows=1343 V2 MAE=0.6327 bias=+0.1538 | persistence 0.6692 CI(model-pers) [-0.0890, +0.0125] | mean3 0.6279 CI(model-mean3) [-0.0528, +0.0591]
+H=1 rf_fSL_level_msl20 fit on train + V1: rows=1973 V2 MAE=0.6216 bias=+0.1268 | persistence 0.6692 CI(model-pers) [-0.1028, +0.0071] | mean3 0.6279 CI(model-mean3) [-0.0653, +0.0516]
+H=2 rf_fSLF_level_msl20 fit on train only: rows=1341 V2 MAE=0.6938 bias=+0.2309 | persistence 0.7238 CI(model-pers) [-0.0973, +0.0341] | mean3 0.6870 CI(model-mean3) [-0.0728, +0.0828]
+H=2 rf_fSLF_level_msl20 fit on train + V1: rows=1971 V2 MAE=0.6896 bias=+0.2158 | persistence 0.7238 CI(model-pers) [-0.1109, +0.0435] | mean3 0.6870 CI(model-mean3) [-0.0874, +0.0905]

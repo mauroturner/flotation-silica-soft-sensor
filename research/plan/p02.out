@@ -1,0 +1,17 @@
+hours on grid 3431 with data 3113
+hours with data per block: {'purge_1': 24, 'purge_v': 24, 'train': 1673, 'valid_v1': 696, 'valid_v2': 696}
+ramp hours per block: {'train': 190, 'valid_v1': 14, 'valid_v2': 21}
+ramp runs=66 length median=2.0 max=17 runs_len1=32
+consecutive ramp-hour pairs=159 with equal per-row slope=159
+inner hours of runs (>=2)=159 whose first value lies on the run's straight line=159
+pct_silica_conc train: consecutive pairs=1671 identical=165 share=0.099
+pct_silica_conc valid_v1: consecutive pairs=696 identical=58 share=0.083
+pct_silica_conc valid_v2: consecutive pairs=696 identical=87 share=0.125
+pct_silica_conc run lengths of identical hourly values: median=1.0 p90=1.0 max=39 runs>=3h=38 hours_in_runs>=3h=290
+pct_silica_feed train: consecutive pairs=1671 identical=1554 share=0.930
+pct_silica_feed valid_v1: consecutive pairs=696 identical=652 share=0.937
+pct_silica_feed valid_v2: consecutive pairs=696 identical=635 share=0.912
+pct_silica_feed run lengths of identical hourly values: median=9.0 p90=9.0 max=792 runs>=3h=227 hours_in_runs>=3h=3113
+target holds by block (value equals previous hour): {'purge_v': 1, 'train': 165, 'valid_v1': 58, 'valid_v2': 87}
+air_flow_04 constant within hour per block: {'train': 460, 'valid_v2': 4}
+air_flow_05 constant within hour per block: {'train': 460, 'valid_v2': 4}

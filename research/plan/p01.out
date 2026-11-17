@@ -1,0 +1,2 @@
+sha256=a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2 seconds=0.12
+pre-test rows=560333 hours=3113 first=2017-03-10 01:00:00 last=2017-07-30 23:00:00 monotone=True parse_s=1.90 parse_and_convert_s=5.66

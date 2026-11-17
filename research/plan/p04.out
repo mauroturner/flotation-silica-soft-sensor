@@ -1,0 +1,164 @@
+train: hours with value=1673 interpolated=139 held=165 fresh=1369
+valid_v1: hours with value=696 interpolated=8 held=58 fresh=630
+valid_v2: hours with value=696 interpolated=12 held=87 fresh=597
+
+=== H=0 (L=2): train rows=1345 V1=630 V2=597
+                           V1      V2
+rf_fSLF_change_msl20   0.4705  0.5415
+rf_fSL_change_msl20    0.4735  0.5463
+B1_persistence         0.4740  0.5329
+rf_fSL_level_msl20     0.4747  0.5556
+rf_fSLF_change_msl5    0.4779  0.5595
+rf_fSL_change_msl5     0.4797  0.5605
+rf_fL_change_msl20     0.4803  0.5316
+rf_fSLF_level_msl20    0.4806  0.5658
+hgb_fSL_change_msl50   0.4829  0.5861
+rf_fSL_level_msl5      0.4852  0.5810
+B2_mean3               0.4882  0.5470
+hgb_fSLF_change_msl50  0.4893  0.5844
+rf_fSLF_level_msl5     0.4911  0.5923
+hgb_fSL_change_msl20   0.4936  0.5914
+rf_fL_change_msl5      0.4946  0.5346
+hgb_fSLF_change_msl20  0.4956  0.5833
+hgb_fSLF_level_msl20   0.5020  0.6105
+hgb_fSL_level_msl20    0.5064  0.6022
+rf_fL_level_msl5       0.5065  0.5538
+rf_fL_level_msl20      0.5174  0.5712
+hgb_fSL_level_msl50    0.5192  0.5980
+hgb_fSLF_level_msl50   0.5266  0.6138
+B2_mean6               0.5350  0.5896
+hgb_fL_change_msl50    0.5395  0.5683
+hgb_fL_change_msl20    0.5471  0.5661
+hgb_fL_level_msl50     0.5475  0.5696
+hgb_fL_level_msl20     0.5545  0.5687
+B2_mean24              0.6093  0.6184
+rf_fS_level_msl20      0.6386  0.7828
+rf_fS_level_msl5       0.6409  0.8098
+hgb_fS_level_msl20     0.6646  0.8844
+hgb_fS_level_msl50     0.6792  0.8333
+B3_ridge_sensors       0.7168  0.9808
+B0_train_mean          0.8188  0.9228
+  best on V1: rf_fSLF_change_msl20 V2 MAE=0.5415; minus persistence on V2: CI95 [-0.0087, 0.0277]
+  best sensor model on V1: rf_fSLF_change_msl20 V2 MAE=0.5415; minus persistence on V2: CI95 [-0.0087, 0.0277]
+  best lab-only on V1: rf_fL_change_msl20 V2 MAE=0.5316; minus persistence on V2: CI95 [-0.0159, 0.0135]
+  sensors add (best sensor - best lab-only) on V2: CI95 [-0.0011, 0.0214]
+  sensors only rf_fS_level_msl20 minus training mean on V2: MAE 0.7828 vs 0.9228; CI95 [-0.2419, -0.0416]
+  bias on V2 (mean pred - actual): best=+0.1099 persistence=+0.0003
+  conformal 80 %: half-width from V1 = 0.7037; coverage on V2 = 0.762
+
+=== H=1 (L=2): train rows=1343 V1=630 V2=597
+                           V1      V2
+B2_mean3               0.5529  0.6279
+B1_persistence         0.5561  0.6692
+rf_fSL_level_msl20     0.5576  0.6327
+rf_fSLF_level_msl20    0.5593  0.6472
+hgb_fSL_level_msl20    0.5643  0.6602
+rf_fSLF_change_msl20   0.5647  0.6721
+rf_fSL_change_msl20    0.5683  0.6672
+rf_fSL_level_msl5      0.5696  0.6601
+rf_fSL_change_msl5     0.5706  0.6706
+rf_fSLF_level_msl5     0.5710  0.6652
+hgb_fSLF_level_msl50   0.5730  0.6777
+hgb_fSL_change_msl20   0.5753  0.6874
+rf_fSLF_change_msl5    0.5776  0.6787
+hgb_fSL_change_msl50   0.5786  0.6886
+rf_fL_change_msl20     0.5790  0.6637
+hgb_fSLF_change_msl50  0.5808  0.6867
+hgb_fSL_level_msl50    0.5836  0.6834
+B2_mean6               0.5857  0.6451
+rf_fL_level_msl20      0.5880  0.6415
+rf_fL_change_msl5      0.5885  0.6527
+hgb_fSLF_change_msl20  0.5909  0.6975
+hgb_fSLF_level_msl20   0.5916  0.6800
+rf_fL_level_msl5       0.5956  0.6365
+B2_mean24              0.6259  0.6328
+hgb_fL_level_msl50     0.6479  0.6792
+hgb_fL_change_msl50    0.6483  0.6788
+hgb_fL_change_msl20    0.6491  0.6807
+hgb_fL_level_msl20     0.6514  0.6753
+rf_fS_level_msl5       0.6515  0.8000
+hgb_fS_level_msl50     0.6563  0.8270
+rf_fS_level_msl20      0.6630  0.7746
+hgb_fS_level_msl20     0.6706  0.8058
+B3_ridge_sensors       0.7010  0.9225
+B0_train_mean          0.8192  0.9233
+  best on V1: rf_fSL_level_msl20 V2 MAE=0.6327; minus persistence on V2: CI95 [-0.0890, 0.0125]
+  best sensor model on V1: rf_fSL_level_msl20 V2 MAE=0.6327; minus persistence on V2: CI95 [-0.0890, 0.0125]
+  best lab-only on V1: rf_fL_change_msl20 V2 MAE=0.6637; minus persistence on V2: CI95 [-0.0327, 0.0225]
+  sensors add (best sensor - best lab-only) on V2: CI95 [-0.0647, 0.0016]
+  sensors only rf_fS_level_msl5 minus training mean on V2: MAE 0.8000 vs 0.9233; CI95 [-0.2246, -0.0232]
+  bias on V2 (mean pred - actual): best=+0.1538 persistence=+0.0231
+  conformal 80 %: half-width from V1 = 0.8200; coverage on V2 = 0.744
+
+=== H=2 (L=2): train rows=1341 V1=630 V2=597
+                           V1      V2
+rf_fSLF_level_msl20    0.5993  0.6938
+rf_fSL_level_msl20     0.6036  0.6834
+B2_mean3               0.6056  0.6870
+B1_persistence         0.6187  0.7238
+hgb_fSLF_level_msl20   0.6201  0.7360
+rf_fSLF_level_msl5     0.6201  0.7378
+rf_fSL_change_msl20    0.6206  0.7233
+rf_fSL_level_msl5      0.6214  0.7195
+rf_fSLF_change_msl20   0.6267  0.7286
+rf_fL_change_msl20     0.6273  0.7145
+B2_mean6               0.6283  0.6821
+hgb_fSL_level_msl20    0.6299  0.7627
+hgb_fSL_change_msl20   0.6313  0.7914
+rf_fL_level_msl20      0.6316  0.6843
+rf_fSL_change_msl5     0.6339  0.7388
+rf_fL_change_msl5      0.6347  0.6993
+B2_mean24              0.6387  0.6425
+hgb_fSLF_level_msl50   0.6395  0.7639
+rf_fL_level_msl5       0.6408  0.6840
+hgb_fSL_level_msl50    0.6427  0.7912
+hgb_fSLF_change_msl50  0.6442  0.7769
+rf_fSLF_change_msl5    0.6529  0.7608
+hgb_fSL_change_msl50   0.6538  0.7909
+rf_fS_level_msl20      0.6601  0.7917
+hgb_fSLF_change_msl20  0.6604  0.8147
+rf_fS_level_msl5       0.6615  0.8318
+hgb_fS_level_msl50     0.6796  0.8642
+hgb_fS_level_msl20     0.6841  0.8423
+hgb_fL_change_msl50    0.6924  0.7303
+hgb_fL_level_msl50     0.6927  0.7157
+hgb_fL_level_msl20     0.6954  0.7179
+hgb_fL_change_msl20    0.6982  0.7284
+B3_ridge_sensors       0.7030  0.8778
+B0_train_mean          0.8189  0.9230
+  best on V1: rf_fSLF_level_msl20 V2 MAE=0.6938; minus persistence on V2: CI95 [-0.0973, 0.0341]
+  best sensor model on V1: rf_fSLF_level_msl20 V2 MAE=0.6938; minus persistence on V2: CI95 [-0.0973, 0.0341]
+  best lab-only on V1: rf_fL_change_msl20 V2 MAE=0.7145; minus persistence on V2: CI95 [-0.0524, 0.0329]
+  sensors add (best sensor - best lab-only) on V2: CI95 [-0.0608, 0.0141]
+  sensors only rf_fS_level_msl20 minus training mean on V2: MAE 0.7917 vs 0.9230; CI95 [-0.2383, -0.0298]
+  bias on V2 (mean pred - actual): best=+0.2309 persistence=+0.0371
+  conformal 80 %: half-width from V1 = 0.9036; coverage on V2 = 0.767
+
+fit seconds: hgb median 0.29 max 0.35; rf median 1.43 max 2.40
+latency L=2 h (d=1): validation V1+V2 n=1227 persistence MAE=0.5026 rf_fSLF_change_msl20 MAE=0.5050
+latency L=3 h (d=2): validation V1+V2 n=1227 persistence MAE=0.6111 rf_fSLF_change_msl20 MAE=0.6174
+latency L=4 h (d=3): validation V1+V2 n=1227 persistence MAE=0.6699 rf_fSLF_change_msl20 MAE=0.6655
+research-style persistence (every hour, clock lag 1, 06-02..07-30): 0.4517 n= 1416
+same, only fresh target hours: 0.5049 n= 1250
+
+sensitivity gate on rf_fSLF_change_msl20 (H=0): grouped permutation increase of MAE (mean of 5) on V1 and V2, PD Spearman over 6 fits
+  starch_flow       V1 -0.0003 V2 +0.0004  rho ['+0.54', '+0.71', '+0.75', '+0.60', '+0.41', '+0.75']  range 0.104  pass=False
+  amina_flow        V1 -0.0007 V2 +0.0002  rho ['-0.62', '+0.44', '-0.81', '-0.95', '+0.48', '-0.89']  range 0.025  pass=False
+  ore_pulp_flow     V1 -0.0007 V2 +0.0007  rho ['-0.99', '-1.00', '-1.00', '-1.00', '-0.99', '-1.00']  range 0.072  pass=False
+  ore_pulp_ph       V1 -0.0005 V2 +0.0003  rho ['-0.61', '-0.88', '-0.80', '-0.97', '-0.51', '-0.93']  range 0.071  pass=False
+  ore_pulp_density  V1 +0.0004 V2 +0.0006  rho ['+0.88', '+0.99', '-0.51', '+0.89', '+0.22', '-0.77']  range 0.014  pass=False
+  air_flow_01       V1 -0.0003 V2 +0.0003  rho ['-0.43', '+0.26', '-0.42', '+0.24', '+0.44', '-0.07']  range 0.031  pass=False
+  air_flow_02       V1 -0.0001 V2 +0.0008  rho ['-0.55', '-0.18', '-0.70', '-0.13', '+0.22', '-0.21']  range 0.027  pass=False
+  air_flow_03       V1 -0.0004 V2 -0.0007  rho ['-0.93', '-0.44', '-0.72', '-0.98', '-0.66', '-1.00']  range 0.048  pass=False
+  air_flow_04       V1 -0.0000 V2 -0.0001  rho ['+0.86', '-0.89', '-0.17', '+0.75', '-0.13', '+0.29']  range 0.005  pass=False
+  air_flow_05       V1 -0.0010 V2 -0.0004  rho ['+0.98', '+0.67', '+0.97', '+0.14', '+0.45', '+0.90']  range 0.024  pass=False
+  air_flow_06       V1 +0.0007 V2 -0.0001  rho ['+0.85', '+0.69', '+0.82', '-0.36', '+0.66', '+0.96']  range 0.022  pass=False
+  air_flow_07       V1 -0.0003 V2 +0.0005  rho ['-0.98', '+0.33', '-0.90', '-0.61', '-0.97', '+0.07']  range 0.064  pass=False
+  level_01          V1 -0.0009 V2 -0.0001  rho ['-0.76', '-0.91', '-0.82', '-0.91', '-0.70', '-0.74']  range 0.032  pass=False
+  level_02          V1 -0.0007 V2 +0.0003  rho ['-0.82', '-0.08', '+0.89', '+0.74', '-0.80', '+0.89']  range 0.018  pass=False
+  level_03          V1 +0.0002 V2 -0.0001  rho ['-0.94', '-0.81', '-0.94', '-0.81', '-0.76', '-0.90']  range 0.012  pass=False
+  level_04          V1 -0.0008 V2 +0.0007  rho ['-0.95', '-0.73', '-0.98', '-0.89', '-0.88', '-0.88']  range 0.029  pass=False
+  level_05          V1 +0.0006 V2 +0.0005  rho ['-0.88', '-0.88', '-0.81', '-0.93', '+0.34', '+0.33']  range 0.025  pass=False
+  level_06          V1 +0.0001 V2 -0.0002  rho ['+0.72', '+0.19', '+0.15', '+0.39', '+0.23', '-0.29']  range 0.013  pass=False
+  level_07          V1 -0.0001 V2 +0.0012  rho ['-0.09', '-0.24', '-0.92', '-0.50', '+0.11', '-0.35']  range 0.044  pass=False
+sensors passing the gate: []
