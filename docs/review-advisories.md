@@ -1,10 +1,10 @@
 # Advertencias de las revisiones nativas
 
-Las advertencias que dejaron las revisiones nativas de Gentle AI de este proyecto, de U01 a U23, una sección por revisión, con su estado. Salen de lo que consta en el registro del documento de seguimiento (`odd/tasks/portfolio-projects.md`, L61 a L66), que dice qué advertencia devolvió cada revisión, cuáles se corrigieron y con qué commit, cuáles refutó quien orquestaba leyendo el código y cuáles quedaron para este documento, y del código y los commits que cada una nombra. **Los archivos de los hallazgos de cada revisión no se conservaron en el repositorio:** el texto de cada advertencia resume lo que dice el registro y lo que muestran el código y el commit de su corrección, y la severidad es la que el registro anota («advertencia» o «sugerencia»); donde no la anota, dice «no consta». Los hallazgos que el registro lista juntos, sin decir de qué revisión salieron (los de U11 a U17), se ubican por el archivo que nombran y la sección lo dice.
+Las advertencias que dejaron las revisiones nativas de Gentle AI de este proyecto, de U01 a U23 y de las correcciones de la evaluación independiente, una sección por revisión, con su estado. Salen de lo que consta en el registro del documento de seguimiento (`odd/tasks/portfolio-projects.md`, L61 a L67), que dice qué advertencia devolvió cada revisión, cuáles se corrigieron y con qué commit, cuáles refutó quien orquestaba leyendo el código y cuáles quedaron para este documento, y del código y los commits que cada una nombra. **Los archivos de los hallazgos de cada revisión no se conservaron en el repositorio:** el texto de cada advertencia resume lo que dice el registro y lo que muestran el código y el commit de su corrección, y la severidad es la que el registro anota («advertencia» o «sugerencia»); donde no la anota, dice «no consta». Los hallazgos que el registro lista juntos, sin decir de qué revisión salieron (los de U11 a U17), se ubican por el archivo que nombran y la sección lo dice.
 
 Estados: **corregida** (con el commit que la corrige), **refutada** (el hallazgo no es un defecto: se leyó el código y la evidencia está en la entrada), **dejada con evidencia** (cierta, cubierta de otro modo) y **abierta** (cierta o posible, sin corregir). Lentes: riesgo (R1), legibilidad (R2), confiabilidad (R3) y resiliencia (R4), por el prefijo del identificador. Las ubicaciones son relativas a la carpeta del proyecto y, donde se dan líneas, a la versión actual del archivo.
 
-Las revisiones que no dejaron hallazgos: la investigación (`8ff5bca`), U05 (`ed3c66e`), U06 (`611b213`), U10 (`5656408`, ítem 1, sola), U17 (`24eda95`, ítem 4, sola), U20 (`8033325`, ítems 5 y 2, sola), la corrección `48a741e` y la corrección `352b915` (revisada, sin hallazgos). U13 (`a1096bd`) y U15 (`cf64427`) superaron el presupuesto de contexto de una revisión aun solas y se revisaron como cadenas de dos partes; U14 (`6a4ea19`), U16 (`e2a6dfa`) y U17 se revisaron solas (el registro no atribuye hallazgos a U13 ni a U16). No se revisaron de forma nativa: el plan (`8adbbbd`), que superó el presupuesto de una revisión solo y con U01 y no se puede partir sin reescribir la historia (se evaluó como riesgo medio, no debido); la parte generada de U21 (`d469a5b`), que la evaluación de riesgo no pidió revisar; y la documentación de U22 y U23, de la que el registro no anota una revisión. Todas las revisiones que se hicieron se aprobaron y se reconocieron.
+Las revisiones que no dejaron hallazgos: la investigación (`8ff5bca`), U05 (`ed3c66e`), U06 (`611b213`), U10 (`5656408`, ítem 1, sola), U17 (`24eda95`, ítem 4, sola), U20 (`8033325`, ítems 5 y 2, sola), la corrección `48a741e`, la corrección `352b915` (revisada, sin hallazgos) y la documentación de las correcciones de la evaluación, `616773b` (revisada, sin hallazgos). U13 (`a1096bd`) y U15 (`cf64427`) superaron el presupuesto de contexto de una revisión aun solas y se revisaron como cadenas de dos partes; U14 (`6a4ea19`), U16 (`e2a6dfa`) y U17 se revisaron solas (el registro no atribuye hallazgos a U13 ni a U16). No se revisaron de forma nativa: el plan (`8adbbbd`), que superó el presupuesto de una revisión solo y con U01 y no se puede partir sin reescribir la historia (se evaluó como riesgo medio, no debido); la parte generada de U21 (`d469a5b`), que la evaluación de riesgo no pidió revisar. Todas las revisiones que se hicieron se aprobaron y se reconocieron.
 
 ## U01 (`c80d4b4`; riesgo, ítem 5; aprobada; 2 sugerencias)
 
@@ -87,7 +87,7 @@ Revisada en dos partes (L65): la escrita a mano (la prueba de la corrida real, D
 
 ## U22-U23 (`d469a5b..70e1b73` y `362bcee`; U22 en un tramo, U23 sola por el ítem 3; aprobadas; 3 sugerencias)
 
-Revisadas después de U23 (L66): el tramo `d469a5b..70e1b73` (U22, la edición del README que cuenta U18-U21, L65 y la corrección de U21) y U23 sola, porque `docs-sync` cambia `cli.py` y `reporting.py`, que comparten otros comandos. La evaluación independiente las encontró sin corregir y explicó la de `docs.py` (L66).
+Revisadas después de U23 (L66): el tramo `d469a5b..70e1b73` (U22, la edición del README que cuenta U18-U21, L65 y la corrección de U21) y U23 sola, porque `docs-sync` cambia `cli.py` y `reporting.py`, que comparten otros comandos. La evaluación independiente las encontró sin corregir (L66) y `8d0d36c` las corrigió (L67).
 
 - **R2-section-helper-sentinel-hack** (`tests/docs/test_docs.py`, la función `section`; legibilidad; sugerencia): para leer «Los resultados» hasta el bloque, las pruebas le agregaban al texto un `\n## ` de centinela.
   - Estado: **corregida** en `8d0d36c`: `section` recibe un final explícito (`end=RESULTS_START`) y, sin él, lee hasta el título siguiente o el final del texto.
@@ -96,9 +96,30 @@ Revisadas después de U23 (L66): el tramo `d469a5b..70e1b73` (U22, la edición d
 - **R3-dtype-lookup-uncaught-keyerror** (`src/flotsilica/docs.py`, `render_dictionary_tables`; confiabilidad; sugerencia): `DTYPE_ES[c.dtype]` sin protección: un tipo que faltara salía con 1 y, como el README se escribía antes, lo dejaba escrito.
   - Estado: **corregida** en `8d0d36c`: un tipo que `DTYPE_ES` no nombra es un `ValueError` con la columna, que `docs-sync` convierte en la salida 2 sin escribir ningún archivo (`tests/docs/test_docs.py::test_docs_sync_with_a_column_type_the_dictionary_cannot_name_exits_2_and_writes_nothing`).
 
+## 0816da8 (B2 de la evaluación; riesgo, ítem 4; aprobada; 1 sugerencia)
+
+Revisada en un árbol de trabajo aparte, escalada al ítem 4 (un rechazo de orden de las tareas, L67).
+
+- **R3-001-0816da8** (`src/flotsilica/pipeline.py`, `_refuse_a_task_of_a_run_without_a_delivery`; confiabilidad; sugerencia): ninguna prueba fija que una corrida que sí tiene su entrega sigue pasando el rechazo nuevo (lo que dice el registro, L67).
+  - Estado: **abierta**: el registro la deja como sugerencia (L67); no se corrigió.
+
+## 8d0d36c (A4, A1 y las tres sugerencias de U22-U23; riesgo, ítem 3; aprobada; 1 sugerencia)
+
+Revisada en un árbol de trabajo aparte, escalada al ítem 3 (L67). Las tres sugerencias que corrige este commit son las de la sección anterior, U22-U23.
+
+- **R3-001-8d0d36c** (`tests/e2e/test_real.py`; confiabilidad; sugerencia): la igualdad de las claves de corrida de `test_real.py` ahora es condicional, así que una clave de lanzamiento cambiada en el almacén original se saltaría esa comparación (lo que dice el registro, L67).
+  - Estado: **abierta**: el registro la deja como sugerencia (L67); no se corrigió.
+
+## 79ed5cc (la tanda de velocidad; riesgo, ítem 6; aprobada; 1 sugerencia)
+
+Revisada en un árbol de trabajo aparte, escalada al ítem 6 (L67; la identidad de la salida se fijó dentro de pruebas que ya existían). La documentación de las correcciones, `616773b`, se revisó sin hallazgos.
+
+- **R4-store-validation-commit-on-error** (`src/flotsilica/pipeline.py`, `_store_validation`; resiliencia; sugerencia): la transacción nueva de `_store_validation` termina con `COMMIT` aunque haya un error, como hacía el modo de autocommit anterior (lo que dice el registro, L67; D33 dice que un error deja lo que dejaban las sentencias anteriores).
+  - Estado: **abierta**: el registro la deja como sugerencia (L67); no se corrigió.
+
 ## Nota para la evaluación
 
 Una nota que no es un hallazgo de ninguna revisión, sino una limitación de lo publicado que se vio al escribir esta documentación (U23). Queda abierta para la evaluación independiente.
 
 - **N1-v1-mae-after-refit** (`outputs/site/algorithms.json`, `horizons[].methods[].mae_v1`, y `src/flotsilica/site_export.py`, `_algorithms`; confiabilidad): el MAE del modelo en V1 que el archivo del sitio publica (0,268 en H0) se mide **después del reajuste con entrenamiento y V1**, es decir, con un modelo que ya vio las horas de V1; no es una medida fuera de muestra. El que se midió en la elección, antes del reajuste, es 0,4725 (`docs/model-card.md`, sección «Selección y reajuste»). La ficha del modelo ya lo dice y no muestra de V1 las cifras de los métodos de aprendizaje; el JSON no lo rotula: la clave se llama `mae_v1`, igual que la de las líneas base, que sí son de V1 con el ajuste de su propio bloque, y la etiqueta de la fila es solo «Modelo». Quien arme la página del sitio desde ese archivo no debe presentar 0,268 como el error del modelo en validación.
-  - Estado: **dejada con evidencia**: la evaluación independiente la confirmó (`mae_v1` del modelo de H0, 0,268, igual a su propio reajuste en V1; L66). No se cambió ninguna salida generada: el README, la ficha del modelo y el plan (sección 21) dicen que esa cifra se mide después del reajuste y no es fuera de muestra, y `SITE-UPDATES.md` pide que la página del sitio no la presente como el error de validación.
+  - Estado: **dejada con evidencia**: la evaluación independiente la confirmó (`mae_v1` del modelo de H0, 0,268, igual a su propio reajuste en V1; L66). La documentación de las correcciones (`616773b`, L67) rotula la cifra. No se cambió ninguna salida generada: el README, la ficha del modelo y el plan (sección 21) dicen que esa cifra se mide después del reajuste y no es fuera de muestra, y `SITE-UPDATES.md` pide que la página del sitio no la presente como el error de validación.

@@ -130,7 +130,7 @@ LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)#\s]+)(?:#[^)]*)?\)")
 IMAGE = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
 UNITS = [f"U{n:02d}" for n in range(1, 24)]
 STATUSES = ("corregida", "refutada", "dejada con evidencia", "abierta")
-DOCS = ("data-dictionary.md", "runbook.md", "paso-a-paso.md", "review-advisories.md", "decisions.md")
+DOCS = ("data-dictionary.md", "runbook.md", "paso-a-paso.md", "review-advisories.md", "decisions.md", "evaluation.md")
 ROW_CELLS = r"^\| `([^`]+)` \| ([^|]+?) \| ([^|]+?) \| ([^|]+?) \|$"
 
 
@@ -384,7 +384,7 @@ def test_open_advisories_match_review_file(project_root: Path, readme: str) -> N
     assert len(fixed) == 15 and all(re.search(r"`[0-9a-f]{7}`", block.split("Estado: **corregida**")[1].splitlines()[0]) for block in fixed)
     opened = sorted(f"{key}/{ident}" for (key, ident), status in found.items() if status == "abierta")
     [stated] = re.findall(r"^Advertencias abiertas: (.+)$", readme, flags=re.MULTILINE)
-    assert sorted(re.findall(r"`([^`]+)`", stated)) == opened and len(opened) == 4, stated
+    assert sorted(re.findall(r"`([^`]+)`", stated)) == opened and len(opened) == 7, stated
 
 
 def test_the_root_rows_of_project_05_carry_the_real_figures(project_root: Path) -> None:
@@ -429,3 +429,43 @@ def test_every_interval_bound_the_documents_quote_is_the_summary_s(project_root:
     assert {"C02", "C03", "C04"} <= seen["README.md"], seen
     three = [m for name, text in (("D47", d47), ("SITE-UPDATES.md (05)", root_rows(project_root))) for m in INTERVAL.findall(text)]
     assert all(quoted_bound(low)[1] == quoted_bound(high)[1] == 3 for _c, _b, low, high in three)
+
+
+
+
+def test_the_root_rows_of_project_05_do_not_say_the_evaluation_is_pending(project_root: Path) -> None:
+    """N1 of the check (L67): the root rows said the independent evaluation had not been done and ended five rows «Pendiente de la evaluación» after L66 recorded it."""
+    rows = root_rows(project_root)
+    stale = re.findall(r"[^\n]{0,60}(?:todavía no se hizo|pendientes? de (?:su confirmación|la evaluación)|antes de la evaluación independiente)[^\n]{0,40}", rows, flags=re.IGNORECASE)
+    assert stale == []
+    assert "ya se hizo" in rows and "docs/evaluation.md" in rows
+
+
+EVALUATION_FINDINGS = [*(f"B{n}" for n in range(1, 5)), *(f"A{n}" for n in range(1, 9))]
+
+
+def test_the_evaluation_gives_every_finding_its_state_and_cites_commits_that_exist(project_root: Path) -> None:
+    """Every blocker and advisory of the evaluation has a section with its «Estado», and every commit the report names is in the history."""
+    text = read(project_root, "evaluation.md")
+    for finding in EVALUATION_FINDINGS:
+        body = re.split(rf"^### {finding}\. ", text, flags=re.MULTILINE)
+        assert len(body) == 2, finding
+        assert re.search(r"\*\*Estado[.:]", re.split(r"^##", body[1], maxsplit=1, flags=re.MULTILINE)[0]), finding
+    assert "Comprobación" in text and "Veredicto" in text
+    hashes = sorted(set(re.findall(r"`([0-9a-f]{7})`", text)))
+    assert {"0816da8", "8d0d36c", "616773b", "79ed5cc"} <= set(hashes)
+    if shutil.which("git") is None or not (project_root.parent / ".git").exists():
+        pytest.skip("there is no Git history to check the commits against")
+    done = subprocess.run(["git", "cat-file", "--batch-check"], cwd=project_root, input="".join(f"{h}^{{commit}}\n" for h in hashes), capture_output=True, text=True)
+    assert [line for line in done.stdout.splitlines() if line.endswith("missing")] == []
+
+
+LOCAL_PATH = re.compile(r"[A-Za-z]:[\\/]+(?:Users|Documents and Settings)|/c/Users|Users\\|/home/\w+/")
+
+
+def test_no_document_publishes_a_local_path_or_a_user_name(project_root: Path, readme: str) -> None:
+    """The README, every document of ``docs/`` and the root rows name no path of the machine and no user name."""
+    documents = {"README.md": readme, "SITE-UPDATES.md (05)": root_rows(project_root)}
+    documents |= {f"docs/{path.name}": path.read_text(encoding="utf-8") for path in sorted((project_root / "docs").glob("*.md"))}
+    found = [name for name, text in documents.items() if LOCAL_PATH.search(text) or re.search(r"mauro", text.replace("hola@mauroturner.com", ""), flags=re.IGNORECASE)]
+    assert found == []
