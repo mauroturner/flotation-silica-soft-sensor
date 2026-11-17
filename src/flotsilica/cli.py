@@ -1,7 +1,7 @@
 """Command line of the pipeline: ``python -m flotsilica <command>`` (RF25, AC32, AC33; plan, section 22). Adapted from project 04's ``cli.py``.
 
 ``run``, ``task`` and ``replay`` call ``pipeline.run_all``, ``pipeline.run_task`` and ``pipeline.replay``: the same task list, order and functions as the Airflow DAG, so the
-whole flow runs on Windows without Airflow. ``figures`` calls ``figures.write_figures`` and ``docs-sync`` calls ``reporting.sync_block``: no step is written here.
+whole flow runs on Windows without Airflow. ``figures`` calls ``figures.write_figures`` and ``docs-sync`` calls ``reporting.sync_block`` and ``docs.sync_dictionary``: no step is written here.
 
 Exit codes: 0 ok (also a run with no delivery left and a replay with nothing pending), 1 a task failed, 2 wrong usage or configuration (also a task refused by the state of
 its run or because another writer holds the data folder), 3 the delivery or the source was rejected by the validation. A combination that cannot do what it says is refused
@@ -88,7 +88,10 @@ def build_parser(task_ids: tuple[str, ...] | None = None) -> argparse.ArgumentPa
     serve.add_argument("--port", type=int, metavar="N", help="puerto, de 1 a 65535 (por defecto el [api] port de la configuración)")
 
     commands.add_parser("figures", parents=[common], help="dibuja las siete figuras de la documentación desde los archivos del sitio verificados de la última corrida")
-    commands.add_parser("docs-sync", parents=[common], help=f"copia el resumen de resultados (reports/{SUMMARY_MD}) en el bloque de resultados del README")
+    docs_sync = ("copia el resumen de resultados (reports/" + SUMMARY_MD + ") en el bloque de resultados del README y escribe, desde el modelo semántico, las tablas de cada "
+                 "Parquet en el diccionario de datos (docs/data-dictionary.md) si existe junto a la carpeta de figuras")
+    commands.add_parser("docs-sync", parents=[common], help=docs_sync,
+                        description=docs_sync[0].upper() + docs_sync[1:] + ". Un segundo uso no cambia nada; si un archivo no tiene sus dos marcadores no se escribe ninguno.")
     return parser
 
 
@@ -176,18 +179,29 @@ def _make_fixture(args: argparse.Namespace) -> int:
 
 
 def _docs_sync(cfg) -> int:
-    from flotsilica.reporting import RESULTS_END, RESULTS_START, sync_block
+    """The results block of the README from the summary and, when ``docs/data-dictionary.md`` is next to the figures folder, its generated tables from the semantic model.
+    Every file is checked for its two markers before any is written: a file that cannot be synced leaves the others as they were."""
+    from flotsilica.dashboard.semantic_model import MODEL
+    from flotsilica.docs import COLUMNS_END, COLUMNS_START, dictionary_path, sync_dictionary
+    from flotsilica.reporting import RESULTS_END, RESULTS_START, check_markers, sync_block
 
     summary, readme = Path(cfg.paths.reports_dir) / SUMMARY_MD, Path(cfg.paths.readme)
     if not readme.is_file():   # the quick mode has no README of its own
         raise _UsageError(texts.docs_sync_without_readme(readme, summary))
     if not summary.is_file():
         raise _UsageError(texts.docs_sync_without_summary(summary))
+    dictionary = dictionary_path(Path(cfg.paths.figures_dir))
     try:
+        check_markers(readme, RESULTS_START, RESULTS_END)
+        if dictionary.is_file():
+            check_markers(dictionary, COLUMNS_START, COLUMNS_END)
         changed = sync_block(readme, RESULTS_START, RESULTS_END, summary.read_text(encoding="utf-8"))
-    except ValueError as error:   # a README without its two markers, once each and in order: nothing was written
+        changed_dictionary = sync_dictionary(dictionary, MODEL) if dictionary.is_file() else None
+    except ValueError as error:   # a file without its two markers, once each and in order: nothing was written
         raise _UsageError(f"{error}. {texts.NOTHING_WRITTEN}") from error
     _say(f"{readme.name} actualizado" if changed else f"{readme.name} ya estaba al día")
+    if changed_dictionary is not None:
+        _say(f"{dictionary.name} actualizado" if changed_dictionary else f"{dictionary.name} ya estaba al día")
     return EXIT_OK
 
 

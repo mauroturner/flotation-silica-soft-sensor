@@ -218,13 +218,20 @@ def write_summary(summary: Mapping[str, Any], reports_dir: Path) -> tuple[Path, 
     return json_path, md_path
 
 
-def sync_block(path: Path, start_marker: str, end_marker: str, content: str) -> bool:
-    """Replace what is between the two markers of `path` with `content` (the markers stay). True if the file changed. A file without both markers, in order and once
-    each, is a ``ValueError`` and is not touched."""
+def check_markers(path: Path, start_marker: str, end_marker: str) -> str:
+    """The text of `path` if it has both markers, in order and once each; otherwise a ``ValueError`` and nothing else happens (``docs-sync`` checks every file before it writes any)."""
     path = Path(path)
     text = path.read_text(encoding="utf-8")
     if text.count(start_marker) != 1 or text.count(end_marker) != 1 or text.index(start_marker) > text.index(end_marker):
         raise ValueError(f"{path.name} debe tener una vez {start_marker} y después una vez {end_marker}")
+    return text
+
+
+def sync_block(path: Path, start_marker: str, end_marker: str, content: str) -> bool:
+    """Replace what is between the two markers of `path` with `content` (the markers stay). True if the file changed. A file without both markers, in order and once
+    each, is a ``ValueError`` and is not touched."""
+    path = Path(path)
+    text = check_markers(path, start_marker, end_marker)
     head, rest = text.split(start_marker)
     _old, tail = rest.split(end_marker)
     new = f"{head}{start_marker}\n{content.strip()}\n{end_marker}{tail}"
