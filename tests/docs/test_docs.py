@@ -56,9 +56,14 @@ def summary(project_root: Path) -> dict:
     return json.loads((project_root / "reports" / "evaluation_summary.json").read_text(encoding="utf-8"))
 
 
-def section(text: str, title: str) -> str:
-    """The body of the second-level section `title`, up to the next second-level heading."""
-    return re.split(r"^## ", text.split(f"\n## {title}\n", 1)[1], flags=re.MULTILINE)[0]
+def section(text: str, title: str, end: str | None = None) -> str:
+    """The body of the second-level section `title`: up to `end` (its first appearance after the heading) when it is given, otherwise up to the next second-level
+    heading or the end of the text (R2-section-helper-sentinel-hack, L66: the boundary is said, not appended to the text)."""
+    body = text.split(f"\n## {title}\n", 1)[1]
+    if end is not None:
+        assert end in body, f"{end!r} does not follow the heading {title!r}"
+        return body.split(end, 1)[0]
+    return re.split(r"^## ", body, flags=re.MULTILINE)[0]
 
 
 def test_readme_headings_in_order_and_results_block_matches_summary(project_root: Path, readme: str, summary: dict) -> None:
@@ -72,7 +77,7 @@ def test_readme_headings_in_order_and_results_block_matches_summary(project_root
     written = (project_root / "reports" / "evaluation_summary.md").read_text(encoding="utf-8")
     assert block == written.strip("\n")   # what docs-sync copies, byte for byte
     assert block.startswith(RESULTS_HEADING + "\n") and re.findall(r"^## (.+)$", block, flags=re.MULTILINE) == ["Resultados"]
-    framing = section(head + "\n## ", "Los resultados")   # «Los resultados» frames the block before it and reads it after it (D48)
+    framing = section(readme, "Los resultados", end=RESULTS_START)   # «Los resultados» frames the block before it and reads it after it (D48)
     assert len(framing.strip()) > 400 and "\n## En qué consiste\n" in tail
     # AC22: the sealed summary is unfavourable, and the README says «no supera» outside the block too, in the three sections that tell it
     assert summary["evaluation_status"] == "sealed" and summary["post_seal"] is None
@@ -81,7 +86,7 @@ def test_readme_headings_in_order_and_results_block_matches_summary(project_root
     assert [c["criterion_id"] for c in summary["criteria"] if c["passed"] is None] == ["C10"]
     for criterion in summary["criteria"]:
         assert criterion["verdict_es"] in block, criterion["criterion_id"]
-    reading = section(head + "\n## ", "Los resultados") + tail.split("\n## En qué consiste\n")[0]
+    reading = framing + tail.split("\n## En qué consiste\n")[0]
     for title, text in (("El problema", section(readme, "El problema")), ("La solución", section(readme, "La solución")), ("Los resultados", reading)):
         assert "no supera" in text, title
     for criterion in FAILED + PASSED:
@@ -295,6 +300,20 @@ def test_docs_sync_with_a_dictionary_without_its_markers_exits_2_and_writes_noth
     captured = capsys.readouterr()
     assert captured.out == "" and "data-dictionary.md" in captured.err and "debe tener una vez" in captured.err and "No se escribió nada" in captured.err
     assert {path: path.read_bytes() for path in sorted(tmp_path.rglob("*")) if path.is_file()} == before   # the README was not written either
+
+
+def test_docs_sync_with_a_column_type_the_dictionary_cannot_name_exits_2_and_writes_nothing(project_root: Path, tmp_path: Path, capsys, monkeypatch) -> None:
+    """R3-dtype-lookup-uncaught-keyerror (U23's review, L66): a type of the semantic model that ``DTYPE_ES`` does not name is a ``ValueError`` that names the column, which
+    ``docs-sync`` turns into exit 2; the tables are rendered before any file is written, so neither the README nor the dictionary changes."""
+    from flotsilica import cli, docs
+
+    monkeypatch.setattr(docs, "DTYPE_ES", {k: v for k, v in docs.DTYPE_ES.items() if k != "date"})
+    config = _sync_project(project_root, tmp_path, f"# D\n\n{docs.COLUMNS_START}\nviejo\n{docs.COLUMNS_END}\n")
+    before = {path: path.read_bytes() for path in sorted(tmp_path.rglob("*")) if path.is_file()}
+    assert cli.main(["docs-sync", "--config", config]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == "" and "'date'" in captured.err and "DTYPE_ES" in captured.err and "No se escribió nada" in captured.err, captured.err
+    assert {path: path.read_bytes() for path in sorted(tmp_path.rglob("*")) if path.is_file()} == before
 
 
 def test_the_help_of_docs_sync_names_both_blocks(capsys) -> None:

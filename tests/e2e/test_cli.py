@@ -448,6 +448,18 @@ def test_a_task_from_load_on_of_a_new_run_exits_2_and_writes_nothing(project):
             assert runs_of(home) == runs and fingerprint(home) == before, (state, task_id, "no run state and no other file")
 
 
+@pytest.mark.parametrize("state", ["closed", "replay"])
+def test_replay_until_a_delivery_already_loaded_exits_2_whether_or_not_one_is_pending(project, state):
+    """A4 of the evaluation (L66; AC32, plan section 22): ``--until`` a delivery that is not after the next pending one is a usage error (exit 2, nothing written) with
+    deliveries pending and with none; ``replay`` without ``--until`` and nothing pending still exits 0 (``test_a_replay_with_nothing_pending_exits_0_without_the_lock``)."""
+    home = project(state)
+    before = fingerprint(home)
+    result = cli("replay", *Q, "--until", LAUNCH_ID)
+    assert result.code == 2 and result.out == "", (result.code, result.out, result.err)
+    assert f"--until {LAUNCH_ID}" in result.err and "no hay nada que correr hasta ella. No se escribió nada." in result.err, result.err
+    assert fingerprint(home) == before
+
+
 def test_a_replay_with_nothing_pending_exits_0_without_the_lock(project, monkeypatch):
     home = project("closed")
     taken = []

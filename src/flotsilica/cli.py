@@ -1,7 +1,7 @@
 """Command line of the pipeline: ``python -m flotsilica <command>`` (RF25, AC32, AC33; plan, section 22). Adapted from project 04's ``cli.py``.
 
 ``run``, ``task`` and ``replay`` call ``pipeline.run_all``, ``pipeline.run_task`` and ``pipeline.replay``: the same task list, order and functions as the Airflow DAG, so the
-whole flow runs on Windows without Airflow. ``figures`` calls ``figures.write_figures`` and ``docs-sync`` calls ``reporting.sync_block`` and ``docs.sync_dictionary``: no step is written here.
+whole flow runs on Windows without Airflow. ``figures`` calls ``figures.write_figures`` and ``docs-sync`` calls ``reporting.replace_block`` and ``docs.render_dictionary_tables``: no step is written here.
 
 Exit codes: 0 ok (also a run with no delivery left and a replay with nothing pending), 1 a task failed, 2 wrong usage or configuration (also a task refused by the state of
 its run or because another writer holds the data folder), 3 the delivery or the source was rejected by the validation. A combination that cannot do what it says is refused
@@ -180,10 +180,13 @@ def _make_fixture(args: argparse.Namespace) -> int:
 
 def _docs_sync(cfg) -> int:
     """The results block of the README from the summary and, when ``docs/data-dictionary.md`` is next to the figures folder, its generated tables from the semantic model.
-    Every file is checked for its two markers before any is written: a file that cannot be synced leaves the others as they were."""
+
+    Check everything, then write (R2-docs-sync-readme-double-read, L66): each file is read once, its markers are checked and its new text is computed (the dictionary's
+    tables rendered) before any file is written, so a file without its markers or a column type the dictionary cannot name leaves every file as it was (exit 2)."""
     from flotsilica.dashboard.semantic_model import MODEL
-    from flotsilica.docs import COLUMNS_END, COLUMNS_START, dictionary_path, sync_dictionary
-    from flotsilica.reporting import RESULTS_END, RESULTS_START, check_markers, sync_block
+    from flotsilica.docs import COLUMNS_END, COLUMNS_START, dictionary_path, render_dictionary_tables
+    from flotsilica.files import write_atomic
+    from flotsilica.reporting import RESULTS_END, RESULTS_START, replace_block
 
     summary, readme = Path(cfg.paths.reports_dir) / SUMMARY_MD, Path(cfg.paths.readme)
     if not readme.is_file():   # the quick mode has no README of its own
@@ -191,17 +194,21 @@ def _docs_sync(cfg) -> int:
     if not summary.is_file():
         raise _UsageError(texts.docs_sync_without_summary(summary))
     dictionary = dictionary_path(Path(cfg.paths.figures_dir))
+    blocks = [(readme, RESULTS_START, RESULTS_END, lambda: summary.read_text(encoding="utf-8"))]
+    if dictionary.is_file():
+        blocks.append((dictionary, COLUMNS_START, COLUMNS_END, lambda: render_dictionary_tables(MODEL)))
+    planned: list[tuple[Path, str, str]] = []   # (file, its text as read, its new text)
     try:
-        check_markers(readme, RESULTS_START, RESULTS_END)
-        if dictionary.is_file():
-            check_markers(dictionary, COLUMNS_START, COLUMNS_END)
-        changed = sync_block(readme, RESULTS_START, RESULTS_END, summary.read_text(encoding="utf-8"))
-        changed_dictionary = sync_dictionary(dictionary, MODEL) if dictionary.is_file() else None
-    except ValueError as error:   # a file without its two markers, once each and in order: nothing was written
+        for path, start, end, content in blocks:
+            text = path.read_text(encoding="utf-8")
+            planned.append((path, text, replace_block(text, path.name, start, end, content())))
+    except ValueError as error:   # a file without its two markers, once each and in order, or a type the dictionary cannot name: nothing was written
         raise _UsageError(f"{error}. {texts.NOTHING_WRITTEN}") from error
-    _say(f"{readme.name} actualizado" if changed else f"{readme.name} ya estaba al día")
-    if changed_dictionary is not None:
-        _say(f"{dictionary.name} actualizado" if changed_dictionary else f"{dictionary.name} ya estaba al día")
+    for path, text, new in planned:
+        if new != text:
+            write_atomic(path, new)
+    for path, text, new in planned:
+        _say(f"{path.name} actualizado" if new != text else f"{path.name} ya estaba al día")
     return EXIT_OK
 
 

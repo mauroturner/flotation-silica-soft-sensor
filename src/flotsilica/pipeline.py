@@ -851,6 +851,8 @@ def replay(cfg: PipelineConfig, until: str | None = None) -> list[list[dict]]:
     last = len(plan) - 1 if until is None else ids.index(until)
     runs: list[list[dict]] = []
     pending = next_pending(_manifest_path(cfg), plan)
+    if pending is None and until is not None:     # every delivery is loaded, `until` too: the same refusal as an `until` before the next pending one (A4, L66)
+        raise UsageError(f"--until {until}: no hay entregas pendientes (las {len(plan)} del plan ya están cargadas); no hay nada que correr hasta ella. No se escribió nada.")
     if pending is None:
         return runs
     if plan.index(pending) > last:     # nothing up to `until` is pending: the option would be ignored in silence, so it is refused

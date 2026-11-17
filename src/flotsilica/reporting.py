@@ -218,23 +218,34 @@ def write_summary(summary: Mapping[str, Any], reports_dir: Path) -> tuple[Path, 
     return json_path, md_path
 
 
+def _check_text(text: str, name: str, start_marker: str, end_marker: str) -> None:
+    if text.count(start_marker) != 1 or text.count(end_marker) != 1 or text.index(start_marker) > text.index(end_marker):
+        raise ValueError(f"{name} debe tener una vez {start_marker} y después una vez {end_marker}")
+
+
 def check_markers(path: Path, start_marker: str, end_marker: str) -> str:
-    """The text of `path` if it has both markers, in order and once each; otherwise a ``ValueError`` and nothing else happens (``docs-sync`` checks every file before it writes any)."""
+    """The text of `path` if it has both markers, in order and once each; otherwise a ``ValueError`` and nothing else happens."""
     path = Path(path)
     text = path.read_text(encoding="utf-8")
-    if text.count(start_marker) != 1 or text.count(end_marker) != 1 or text.index(start_marker) > text.index(end_marker):
-        raise ValueError(f"{path.name} debe tener una vez {start_marker} y después una vez {end_marker}")
+    _check_text(text, path.name, start_marker, end_marker)
     return text
+
+
+def replace_block(text: str, name: str, start_marker: str, end_marker: str, content: str) -> str:
+    """`text` (the file `name`) with what is between its two markers replaced by `content` (the markers stay); nothing is read or written. A text without both markers,
+    in order and once each, is a ``ValueError`` that names the file: ``docs-sync`` computes every new text with this before it writes any."""
+    _check_text(text, name, start_marker, end_marker)
+    head, rest = text.split(start_marker)
+    _old, tail = rest.split(end_marker)
+    return f"{head}{start_marker}\n{content.strip()}\n{end_marker}{tail}"
 
 
 def sync_block(path: Path, start_marker: str, end_marker: str, content: str) -> bool:
     """Replace what is between the two markers of `path` with `content` (the markers stay). True if the file changed. A file without both markers, in order and once
     each, is a ``ValueError`` and is not touched."""
     path = Path(path)
-    text = check_markers(path, start_marker, end_marker)
-    head, rest = text.split(start_marker)
-    _old, tail = rest.split(end_marker)
-    new = f"{head}{start_marker}\n{content.strip()}\n{end_marker}{tail}"
+    text = path.read_text(encoding="utf-8")
+    new = replace_block(text, path.name, start_marker, end_marker, content)
     if new == text:
         return False
     write_atomic(path, new)

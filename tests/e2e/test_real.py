@@ -99,7 +99,13 @@ def test_real_counts_seal_and_summary_consistency(cfg, outputs):
     runs = conn.execute("SELECT p.run_key, p.started_at, p.finished_at, p.status, p.peak_working_set_mb, p.memory_counter, d.kind "
                         "FROM pipeline_runs p JOIN deliveries d ON d.delivery_id = p.delivery_id ORDER BY p.started_at").fetchall()
     assert [r[6] for r in runs] == ["launch"] + ["daily"] * DAILY_RUNS + ["close"] and {r[3] for r in runs} == {"ok"}
-    assert runs[0][0] == launch["run_key"] and runs[-1][0] == test["run_key"] == summary["run_key"] == site.summary["run_key"]
+    assert runs[-1][0] == summary["run_key"] == site.summary["run_key"]
+    # A1 of the evaluation (L66): a rebuild with the seal in place (runbook R11) gives its runs their own keys and leaves the seal as it was, so the seal's run keys are
+    # those of the warehouse only when this warehouse wrote it. What the seal fixes is compared above (the configuration, the source, the instants and the ten criteria of
+    # the sealed rows of this warehouse against the seal's), and the criteria are this warehouse's own sealed evaluation, not a copy taken from the seal.
+    assert summary.get("sealed_from") != "seal", "the summary took the criteria from the seal: this warehouse holds no sealed evaluation of its own"
+    if runs[0][0] == launch["run_key"]:
+        assert runs[-1][0] == test["run_key"], "the warehouse that wrote the launch part of the seal wrote its test part too"
     assert conn.execute("SELECT COUNT(*) FROM deliveries WHERE status != 'loaded'").fetchone()[0] == 0
 
     # AC36 (RNF02, RNF03): times from the records of the runs, and the peak of the working set with its counter named

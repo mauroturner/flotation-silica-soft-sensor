@@ -29,6 +29,14 @@ def _cell(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _dtype_es(table: str, column: str, dtype: str) -> str:
+    """The name the dictionary gives a type; one ``DTYPE_ES`` does not name is a ``ValueError`` that names the column, which ``docs-sync`` turns into exit 2 (R3, L66)."""
+    try:
+        return DTYPE_ES[dtype]
+    except KeyError:
+        raise ValueError(f"el tipo {dtype!r} de la columna {table}.{column} no tiene nombre en el diccionario (docs.DTYPE_ES)") from None
+
+
 def render_dictionary_tables(model: SemanticModel) -> str:
     """One section per table of the model, in its order: what it is, where it is written, its key or grain, and every column with its type, unit and meaning."""
     lines: list[str] = []
@@ -36,7 +44,7 @@ def render_dictionary_tables(model: SemanticModel) -> str:
         keys = ", ".join(f"`{k}`" for k in table.key)
         lines += [f"### `{table.name}`", "", f"{KIND_ES[table.kind]}. {_cell(table.description_es)} {VERSIONED_ES.format(name=table.name)} {KEY_ES[table.kind]}: {keys}.", ""]
         lines += ["| Columna | Tipo | Unidad | Significado |", "| --- | --- | --- | --- |"]
-        lines += [f"| `{c.name}` | {DTYPE_ES[c.dtype]} | {_cell(c.unit or NO_UNIT)} | {_cell(c.description_es)} |" for c in table.columns]
+        lines += [f"| `{c.name}` | {_dtype_es(table.name, c.name, c.dtype)} | {_cell(c.unit or NO_UNIT)} | {_cell(c.description_es)} |" for c in table.columns]
         lines.append("")
     return "\n".join(lines).rstrip("\n") + "\n"
 
