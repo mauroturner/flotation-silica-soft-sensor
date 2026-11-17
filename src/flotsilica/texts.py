@@ -176,3 +176,53 @@ def informative_verdict(hours: int) -> str:
 def pending_reason(ready: str, as_of: str) -> str:
     return (f"La prueba se evalúa una sola vez, cuando llega el último análisis de la prueba ({ready}); esta corrida es la del {as_of}. "
             "Las cifras que se muestran son de la validación (V1 y V2), no de la prueba.")
+
+
+# --- the command line (U18, plan section 22): what ``python -m flotsilica`` says when a command is refused before anything is written ----------------------------------
+
+NOTHING_WRITTEN = "No se escribió nada."
+NO_PENDING_DELIVERIES = "No hay entregas pendientes: nada que correr."
+
+
+def only_with_from() -> str:
+    return f"--only y --from no se combinan: elija las tareas o desde cuál seguir. {NOTHING_WRITTEN}"
+
+
+def run_key_needs_a_selection() -> str:
+    return f"--run-key necesita --only o --from: una corrida completa nueva elige su propia clave. {NOTHING_WRITTEN}"
+
+
+def a_new_run_starts_at(first: str, got: str) -> str:
+    return (f"una corrida nueva empieza por {first}, no por {got}: indique con --run-key la corrida que continúa (sin ella no hay resultado de las tareas anteriores). "
+            f"{NOTHING_WRITTEN}")
+
+
+def runs_count(count: int) -> str:
+    return "1 corrida" if count == 1 else f"{count} corridas"
+
+
+def docs_sync_without_readme(readme: object, summary: object) -> str:
+    return (f"docs-sync copia el resumen de resultados en el README de la configuración, {readme}, y ese archivo no existe: el modo rápido no tiene README, "
+            f"y su resumen queda en {summary}. {NOTHING_WRITTEN}")
+
+
+def docs_sync_without_summary(summary: object) -> str:
+    return f"no existe {summary}: corra la tarea report antes de docs-sync (python -m flotsilica task report). {NOTHING_WRITTEN}"
+
+
+def figures_refused(problem: object) -> str:
+    return f"{problem}. No se escribió ninguna figura."
+
+
+def fixture_outside_the_project(path: object, root: object) -> str:
+    return (f"{path} sale de la carpeta del proyecto ({root}); use una ruta absoluta si el destino está fuera a propósito (una relativa se toma de la carpeta del proyecto, "
+            f"no del directorio de trabajo). {NOTHING_WRITTEN}")
+
+
+def fixture_without_tests_tree(root: object) -> str:
+    return (f"make-fixture usa el generador de tests/fixtures/make_fixture.py, y {root} no tiene la carpeta tests (por ejemplo, la imagen de Airflow solo trae las "
+            f"dependencias): córralo desde un clon completo del proyecto. {NOTHING_WRITTEN}")
+
+
+def fixture_written(path: object, rows: int, hours: int, seed: int, signal: str) -> str:
+    return f"escribí {path}: {rows} filas en {hours} horas (semilla {seed}, señal {signal})"

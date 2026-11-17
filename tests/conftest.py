@@ -455,3 +455,47 @@ def pipeline_replayed(tmp_path_factory: pytest.TempPathFactory, pipeline_launche
     state.idle = pipeline.run_all(cfg, run_key="idle")
     state.runs = runs_of(cfg)
     return state
+
+
+# --- the quick mode, isolated (U18) ----------------------------------------------------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def quick_replay(tmp_path_factory: pytest.TempPathFactory):
+    """The documented quick replay from nothing, once per session: from a clean clone (only ``config/`` and the small overlay) and an empty folder that is not the project,
+    with ``FLOTSILICA_HOME`` on the clone, ``make-fixture data/quick/flotation_fixture.arff --weeks 3`` and ``replay --config config/pipeline.small.toml --until
+    L2017-03-29`` (the launch; the delivery of 25 hours and the close stay pending), both in this process. It records the fingerprints of the clone, of the working
+    directory and of this repository's project before and after (AC33). The tests of the command line and of the quick mode share it (plan, section 24.1)."""
+    from tests.e2e.cli_helpers import PROJECT_ROOT as REAL, SMALL_CONFIG, at_home, cli, fingerprint, quick_project
+    from tests.fixtures.pipeline_state import LAUNCH_ID
+
+    base = tmp_path_factory.mktemp("quick_replay")
+    home, elsewhere = quick_project(base / "clone"), base / "elsewhere"
+    elsewhere.mkdir()
+    before, real_before = fingerprint(home), fingerprint(REAL)
+    with at_home(home, elsewhere):
+        made = cli("make-fixture", "data/quick/flotation_fixture.arff", "--weeks", str(SMALL_WEEKS))
+        result = cli("replay", "--config", SMALL_CONFIG, "--until", LAUNCH_ID)
+    return types.SimpleNamespace(home=home, elsewhere=elsewhere, made=made, result=result, before=before, after=fingerprint(home), real_before=real_before,
+                                 real_after=fingerprint(REAL))
+
+
+@pytest.fixture(scope="session")
+def quick_closed(tmp_path_factory: pytest.TempPathFactory, quick_replay):
+    """The delivery of 25 hours after ``quick_replay``, made by hand, once per session, on a copy of its project: ``run --only fetch_source deliver validate --run-key M1`` and then
+    ``run --from load --run-key M1``, which finish the run. ``tasks_before`` is what the state file of ``M1`` held between the two commands; ``first`` and ``result`` are what
+    they printed, and ``before`` and ``after`` the fingerprints of the project around both (AC33)."""
+    import json
+
+    from tests.e2e.cli_helpers import SMALL_CONFIG, at_home, cli, fingerprint
+
+    base = tmp_path_factory.mktemp("quick_closed")
+    home, elsewhere = base / "clone", base / "elsewhere"
+    shutil.copytree(quick_replay.home, home)
+    elsewhere.mkdir()
+    state, before = home / "data" / "quick" / "interim" / "runs" / "M1.json", fingerprint(home)
+    with at_home(home, elsewhere):
+        first = cli("run", "--config", SMALL_CONFIG, "--only", "fetch_source", "deliver", "validate", "--run-key", "M1")
+        tasks_before = json.loads(state.read_text(encoding="utf-8"))["tasks"]
+        result = cli("run", "--config", SMALL_CONFIG, "--from", "load", "--run-key", "M1")
+    return types.SimpleNamespace(home=home, elsewhere=elsewhere, first=first, result=result, tasks_before=tasks_before, before=before, after=fingerprint(home))
