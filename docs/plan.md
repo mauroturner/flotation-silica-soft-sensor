@@ -753,6 +753,8 @@ TASKS: tuple[TaskSpec, ...] = (
 
 **Un solo escritor** (`lock.py`, D30): el del proyecto 04 tal cual, con `FLOTSILICA_*`: `O_CREAT | O_EXCL` antes del archivo de estado; el archivo dice el proceso, su hora de inicio, el equipo, el comando, la corrida, la hora y una ficha aleatoria; un segundo escritor recibe `RunLockedError` (salida 2) con el estado del dueño; solo el dueño lo borra; soltar nunca levanta (reintentos de 2 s, aviso con la traza que nombra el runbook R8); la toma anidada del mismo proceso y del mismo hilo reescribe y devuelve el registro de afuera; otro hilo se rechaza. Un `replay` sin entregas pendientes no toma el bloqueo. La API no toma el bloqueo: no escribe.
 
+**Notas de U16.** `lock.py` entrega el bloqueo y el rechazo (salida 2, nada escrito); el envoltorio de tareas que lo toma es de U17. Cambios respecto del de P4: la reescritura del archivo es `files.write_atomic` con los reintentos de la remoción; los textos dicen `flotsilica` y el runbook R8; `sole_writer` entrega el `Holding`; no lee variables de entorno. Ver D30.
+
 **DAG** `airflow/dags/flotsilica_daily.py` (Airflow 3: `from airflow.sdk import DAG, task`): `dag_id="flotsilica_daily"`, `schedule="0 1 * * *"`, `start_date` 2026-11-01 UTC, `catchup=False`, `max_active_runs=1`, `max_active_tasks=1`, `tags=["flotsilica"]`; una tarea por `TaskSpec`, `@task.short_circuit` para `deliver`. Cada tarea llama a `pipeline.run_task(task_id, run_id)`; un `ValidationError`, un `SourceError`, un `LeakageError` y un `RunRefusedError` fallan con `AirflowFailException`, sin reintentos.
 
 **Docker** (`airflow/`, D28): `Dockerfile` `FROM apache/airflow:3.4.0@sha256:<el resumen que fijó el proyecto 04>` **[Verificar en U20 en `04-Ecommerce-Churn-Risk/airflow/Dockerfile`]**, `COPY requirements.txt`, `RUN pip install --no-cache-dir "apache-airflow==${AIRFLOW_VERSION}" -r /requirements.txt` (sin `requirements-api.txt`); contexto = la carpeta del proyecto con `.dockerignore`. `docker-compose.yaml` copiado del corregido del proyecto 04 y adaptado (montaje en `/opt/flotsilica`, `PYTHONPATH=/opt/flotsilica/src`, `FLOTSILICA_CONFIG`, `FLOTSILICA_HOME=/opt/flotsilica`, imagen `flotsilica-airflow:3.4.0`, `name: flotsilica-airflow`), con las cuatro claves del proyecto 04 con el prefijo `FLOTSILICA_`; `data/raw/` montado en solo lectura (el ARFF lo pone el dueño). `.env.example` lista las claves vacías y cómo generarlas; lo escribe quien construye U20.
@@ -834,7 +836,7 @@ def replay(cfg, until: str | None = None) -> list[list[dict]]
 class UsageError(ValueError): ...; class RunStateError(RuntimeError): ...; class RunRefusedError(RunStateError): ...
 class RunLockedError(RunRefusedError): ...
 @contextmanager
-def sole_writer(interim_dir: Path, command: str, run_key: str | None) -> Iterator[None]
+def sole_writer(interim_dir: Path, command: str, run_key: str | None) -> Iterator[Holding]
 def peak_memory() -> MemoryPeaks
 ```
 
