@@ -722,6 +722,17 @@ def _refuse_a_test_evaluation_under_another_configuration(spec: TaskSpec, ctx: R
                               f"sellada: {error} {spec.task_id} no corre.") from error
 
 
+def _refuse_a_task_of_a_run_without_a_delivery(spec: TaskSpec, ctx: RunContext) -> None:
+    """B2 of the evaluation (L66; AC30): a task from ``load`` on of a run that holds no delivery (a new run, as ``task <tarea>`` without ``--run-key`` is, or one whose
+    ``deliver`` did not finish) has no delivery of its own to work on. It is refused before ``_open`` creates the state file, so nothing is written; before, the task
+    raised ``RunStateError`` after that and the run was left ``failed`` (exit 1). It is the last refusal, so every refusal before it keeps its message (D89's included)."""
+    if TASK_IDS.index(spec.task_id) < TASK_IDS.index("load") or _held_delivery(ctx).get("delivered"):
+        return
+    raise RunRefusedError(f"la corrida {ctx.run_key} no tiene una entrega: {spec.task_id} trabaja sobre la entrega que cargó su corrida; una corrida nueva empieza por "
+                          "fetch_source (python -m flotsilica run) y una que ya empezó se continúa con su clave (python -m flotsilica run --run-key <clave> --from <tarea>). "
+                          "No se escribió nada.")
+
+
 def _reopen(ctx: RunContext) -> None:
     state = _read_state(ctx.state_path)
     if state.get("status") != "failed":
@@ -762,6 +773,7 @@ def _run_spec(spec: TaskSpec, ctx: RunContext) -> dict:
     _refuse_a_load_its_validation_did_not_pass(spec, ctx)
     _refuse_an_older_delivery(spec, ctx)
     _refuse_a_test_evaluation_under_another_configuration(spec, ctx)
+    _refuse_a_task_of_a_run_without_a_delivery(spec, ctx)
     started = time.perf_counter()
     _open(ctx)
     _reopen(ctx)

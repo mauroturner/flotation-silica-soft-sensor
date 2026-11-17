@@ -435,6 +435,19 @@ def test_a_closed_run_or_a_held_lock_exits_2_and_writes_nothing(project):
     assert locked.code == 2 and "escribe esta carpeta de datos" in locked.err and "Z1" not in runs_of(home), locked.err
 
 
+def test_a_task_from_load_on_of_a_new_run_exits_2_and_writes_nothing(project):
+    """B2 of the evaluation (L66; AC30): ``task <tarea>`` without ``--run-key`` is a new run, which holds no delivery; every task from ``load`` on works on the delivery its own
+    run loaded, so it is refused with 2 before the state file of the new run is created, with nothing pending (the whole plan delivered) and with deliveries pending."""
+    for state in ("closed", "replay"):
+        home = project(state, name=state)
+        runs, before = runs_of(home), fingerprint(home)
+        for task_id in TASK_IDS[TASK_IDS.index("load"):]:
+            result = cli("task", task_id, *Q)
+            assert result.code == 2, (state, task_id, result.code, result.err)
+            assert result.out == "" and "no tiene una entrega" in result.err and "No se escribió nada" in result.err, (state, task_id, result.err)
+            assert runs_of(home) == runs and fingerprint(home) == before, (state, task_id, "no run state and no other file")
+
+
 def test_a_replay_with_nothing_pending_exits_0_without_the_lock(project, monkeypatch):
     home = project("closed")
     taken = []
