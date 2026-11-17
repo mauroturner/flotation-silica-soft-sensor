@@ -462,11 +462,13 @@ def _check_calendar(cfg: PipelineConfig) -> None:
             raise ValueError(f"[split] {name}: la primera hora ({first}) es posterior a la última ({last})")
     if s.train_first < h.first_hour:
         raise ValueError(f"[split] train_first: no puede ser anterior a first_hour de [hours] ({h.first_hour}), se recibió {s.train_first}")
-    shifted = timedelta(hours=lab.latency_hours)
-    if s.test_last + shifted > h.last_hour + shifted:
+    # The last analysis of the test arrives at test_last + latency_hours and the close waits until last_hour + latency_hours (D10, D21). The
+    # same shift on both sides cancels, so the check is the one of the calendar, whatever the latency.
+    if s.test_last > h.last_hour:
         raise ValueError(
-            f"[split] test_last: test_last + latency_hours ({s.test_last + shifted}) no puede ser posterior a last_hour + latency_hours "
-            f"({h.last_hour + shifted}): el último análisis de la prueba debe llegar dentro del cierre"
+            f"[split] test_last: no puede ser posterior a last_hour ({h.last_hour}), se recibió {s.test_last}: el último análisis de la prueba "
+            f"llega en test_last + latency_hours y el cierre espera hasta last_hour + latency_hours ({lab.latency_hours} h), el mismo desfase "
+            f"en los dos lados, de modo que el último análisis debe llegar dentro del cierre"
         )
     # every edge between two consecutive blocks keeps purge_hours whole hours that belong to neither block (AC09)
     edges = (("train", "valid_v1", s.train_last, s.v1_first), ("valid_v1", "valid_v2", s.v1_last, s.v2_first),

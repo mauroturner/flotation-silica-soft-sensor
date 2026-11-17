@@ -1,7 +1,14 @@
-"""Atomic file writes (RNF05): write to a temporary file of its own, then rename.
+"""Atomic file writes (RNF05): write to a temporary file of its own, flush it to disk, then rename.
 
 The temporary file is unique and lives in the folder of the target, so two overlapping writers never share it and
 the rename stays on one filesystem. A failure removes the temporary file and leaves the target as it was.
+
+What is guaranteed: the target is, at every instant, either its previous content or the complete new content, never a mix (the
+rename is ``os.replace``), and the complete new content was flushed with ``os.fsync`` to the storage device before the rename, so
+after a crash or a power cut a target that was renamed does not come back empty or cut short. What is not: the folder entry is not
+synced (``fsync`` of a directory is not available on Windows), so after a power cut the rename itself may not have survived and the
+target may be its previous content; nothing is torn either way. A reader that needs to know which one it got checks the manifest
+hashes the writers keep (RNF05).
 """
 
 from __future__ import annotations
@@ -14,9 +21,17 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+def _sync(path: Path) -> None:
+    """Flush the content of a closed file to the storage device (Windows needs a writable descriptor for ``fsync``)."""
+    with path.open("rb+") as handle:
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
 @contextmanager
 def atomic_path(path: Path) -> Iterator[Path]:
-    """Yield a temporary path next to `path`; on a clean exit it replaces `path` (``os.replace``)."""
+    """Yield a temporary path next to `path`; on a clean exit its content is flushed to disk (``os.fsync``) and it replaces `path`
+    (``os.replace``). The caller writes the file by name and closes it before leaving the block."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
@@ -24,6 +39,7 @@ def atomic_path(path: Path) -> Iterator[Path]:
     temporary = Path(name)
     try:
         yield temporary
+        _sync(temporary)
         os.replace(temporary, path)
     except BaseException:
         temporary.unlink(missing_ok=True)

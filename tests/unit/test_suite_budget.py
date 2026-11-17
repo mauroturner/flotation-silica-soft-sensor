@@ -115,3 +115,18 @@ def test_no_helper_outside_the_test_files_is_collected(tmp_path):
     ]
     # and on the project as it is
     assert uncollectable_helpers(PROJECT) == []
+
+
+def test_a_last_failed_session_is_a_part_of_the_suite_and_never_failed_for_its_time(pytester):
+    """``--lf`` (stored by pytest under ``lf``, the name ``--last-failed`` shares) reruns only a part of the suite: it is not the full
+    default selection, with or without something to rerun."""
+    toy_suite(pytester, "0")
+    (pytester.path / "tests" / "test_toy.py").write_text("def test_one():\n    assert False\n\ndef test_two():\n    assert True\n", encoding="utf-8")
+    assert pytester.runpytest_inprocess().ret == 1  # a failing test is a failure, and the first run is the full selection
+    for flag in ("--lf", "--last-failed"):
+        result = pytester.runpytest_inprocess(flag)
+        assert "La suite rápida tardó" not in result.stdout.str(), flag
+        result.assert_outcomes(failed=1)
+    (pytester.path / "tests" / "test_toy.py").write_text("def test_one():\n    assert True\n\ndef test_two():\n    assert True\n", encoding="utf-8")
+    result = pytester.runpytest_inprocess("--lf")
+    assert result.ret == 0 and "La suite rápida tardó" not in result.stdout.str()

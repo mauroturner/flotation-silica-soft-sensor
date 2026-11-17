@@ -90,7 +90,7 @@ def test_truth_counts_match_the_arff_and_every_planted_state_is_where_the_truth_
     assert counts["feed_changes_within_hour"] == 0
     for name in ("feed_silica", "feed_iron"):
         values = [column(by_hour[h], name)[0] for h in hours]
-        age, start, ages = 0, 0, []
+        start, ages = 0, []
         for i, h in enumerate(hours):
             if i and values[i] != values[i - 1]:
                 start = i

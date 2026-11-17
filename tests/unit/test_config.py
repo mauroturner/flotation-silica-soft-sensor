@@ -416,3 +416,17 @@ def test_every_split_hour_is_used_by_the_check(tmp_path):
         with pytest.raises(ValueError, match=r"\[split\]|borde"):
             load_config(variant(tmp_path, snippet=f"[split]\n{key} = {value}\n"))
     assert load_config(variant(tmp_path, snippet="[split]\nv1_last = 2017-06-15T23:00:00\n")).split.v1_last == datetime(2017, 6, 15, 23)
+
+
+@pytest.mark.parametrize("latency", [1, 2, 3, 4])
+def test_the_close_check_compares_the_two_calendar_hours_whatever_the_latency(tmp_path, latency):
+    """The last analysis of the test arrives at test_last + latency_hours and the close waits until last_hour + latency_hours (D10, D21): the
+    same shift on both sides, so the rule is ``test_last <= last_hour`` for every latency. It is refused naming the two hours of the
+    calendar (not two shifted ones, which hid that the latency cancels), and the boundary itself is accepted."""
+    lab = f"[lab]\nlatency_hours = {latency}\n"
+    with pytest.raises(ValueError) as refusal:
+        load_config(variant(tmp_path, snippet=lab + "[split]\ntest_last = 2017-09-10T00:00:00\n"))
+    message = str(refusal.value)
+    assert "[split] test_last" in message and "2017-09-10 00:00:00" in message and "2017-09-09 23:00:00" in message
+    assert "latency_hours" in message  # it says why the same shift on both sides leaves the calendar comparison
+    assert load_config(variant(tmp_path, snippet=lab + "[split]\ntest_last = 2017-09-09T23:00:00\n")).split.test_last == datetime(2017, 9, 9, 23)

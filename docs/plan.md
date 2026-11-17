@@ -306,7 +306,7 @@ Reglas. Las de la fuente corren en `fetch_source`, una vez por huella; las de la
 | V01 | bloqueante | fuente | source | El archivo existe y tiene el tamaño y la huella aceptados (o la registrada, en modo rápido) | Rechazo; nada cambia; runbook R1 |
 | V02 | bloqueante | fuente | source | Cabecera exacta: `@RELATION`, los 24 `@ATTRIBUTE` en orden y todos `STRING`, `@DATA` una vez | Rechazo |
 | V03 | bloqueante | fuente | source | UTF-8 estricto, sin byte nulo, líneas ≤ `max_line_bytes`, archivo ≤ `max_bytes`, filas ≤ `max_rows` | Rechazo |
-| V04 | bloqueante | fuente | source | Cada fila con 24 campos entre apóstrofos y ninguno vacío | Rechazo |
+| V04 | bloqueante | fuente | source | Cada fila con 24 campos, cada uno entre apóstrofos o un entero sin apóstrofos (`-?[0-9]+`; el archivo real escribe así 28.124 de las 560.333 filas anteriores a la prueba), y ninguno vacío | Rechazo |
 | V05 | bloqueante | fuente | source | Fecha `YYYY-MM-DD HH:00:00`; números `^-?\d+(,\d+)?$` | Rechazo |
 | V06 | bloqueante | fuente | source | Fechas no decrecientes | Rechazo |
 | V07 | bloqueante | fuente | source | Ninguna hora con más de `rows_per_hour` filas (máximo real: 180) | Rechazo |
