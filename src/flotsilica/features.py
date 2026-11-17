@@ -99,6 +99,8 @@ class HourTables:
         self._fresh_hours = self._hours[fresh]
         self._fresh_available = self._available[fresh]
         self._fresh_silica = table["silica_pct"].to_numpy(dtype="float64")[fresh]
+        self._silica = table["silica_pct"].to_numpy(dtype="float64")
+        self._is_fresh = fresh
 
     @classmethod
     def from_hours(cls, hours: pd.DataFrame, view: Any) -> HourTables:
@@ -106,6 +108,35 @@ class HourTables:
         if "available_at" not in hours.columns:
             hours = hours.assign(available_at=hours["hour"] + timedelta(hours=view.lab.latency_hours))
         return cls(hours)
+
+    @property
+    def hours(self) -> pd.DatetimeIndex:
+        """Every hour of the tables, in order."""
+        return pd.DatetimeIndex(self._hours)
+
+    def analysis_of(self, hours: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+        """``(silica, fresh)`` of each hour of `hours`: the analysis of the hour and whether it is a fresh one (NaN and False for an hour the tables do
+        not have). This is the label of a target hour, for the fit and the evaluation; ``inputs``, ``feature_row`` and ``design`` never call it."""
+        places = pd.DatetimeIndex(self._hours).get_indexer(pd.DatetimeIndex(hours))
+        found = places >= 0
+        silica = np.full(len(places), np.nan)
+        fresh = np.zeros(len(places), dtype=bool)
+        silica[found], fresh[found] = self._silica[places[found]], self._is_fresh[places[found]]
+        return silica, fresh
+
+    def sensor_matrix(self, instants: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+        """``(aggregates, rows)`` of the hour before each instant of `instants`: the 57 aggregates of ``AGGREGATE_COLUMNS`` and the rows of the
+        hour, NaN where the tables have no such hour."""
+        places = pd.DatetimeIndex(self._hours).get_indexer(pd.DatetimeIndex(instants) - HOUR)
+        found = places >= 0
+        matrix = np.full((len(places), len(AGGREGATE_COLUMNS)), np.nan)
+        rows = np.full(len(places), np.nan)
+        matrix[found], rows[found] = self._aggregates[places[found], 1:], self._aggregates[places[found], 0]
+        return matrix, rows
+
+    def known_count(self, instants: pd.DatetimeIndex) -> np.ndarray:
+        """How many fresh analyses have arrived at each instant of `instants`."""
+        return np.searchsorted(self._fresh_available, pd.DatetimeIndex(instants).to_numpy(dtype="datetime64[ns]"), side="right")
 
     def fresh_known(self, t: datetime) -> tuple[np.ndarray, np.ndarray]:
         """``(sample hours, silica)`` of every fresh analysis that has arrived at `t`, in order of their samples (a view: not to be changed)."""

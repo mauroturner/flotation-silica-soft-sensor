@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
+from flotsilica.schema import AGGREGATE_COLUMNS
+
 DAY = datetime(2017, 5, 1)
 LATENCY_HOURS = 2
 
@@ -50,6 +52,20 @@ def fresh_analyses() -> pd.DataFrame:
     return pd.DataFrame({
         "sample_hour": fresh["hour"], "silica_pct": fresh["silica_pct"], "available_at": fresh["hour"] + timedelta(hours=LATENCY_HOURS),
     })
+
+
+def case_hours(rows: int = 12) -> pd.DataFrame:
+    """The twelve hours of the freshness case (the canonical hours of a warehouse: ``hour``, ``rows``, ``lab_state``, ``silica_pct``, the feed and its ages and the 57 aggregates) with their states and, per hour k, a value that says which hour it came from: the aggregate j
+    is ``100 * j + k``, the feed of silica ``16 + k / 10`` and of iron ``55 + k / 10``, their ages ``k`` and ``k + 0.5``."""
+    case = freshness_case()
+    hours = pd.DataFrame({
+        "hour": case.first_rows["hour"], "rows": rows, "lab_state": case.expected_states, "silica_pct": case.first_rows["silica_pct"],
+        "feed_silica_pct": [16 + k / 10 for k in range(12)], "feed_iron_pct": [55 + k / 10 for k in range(12)],
+        "feed_silica_age_h": [float(k) for k in range(12)], "feed_iron_age_h": [k + 0.5 for k in range(12)],
+    })
+    for j, column in enumerate(AGGREGATE_COLUMNS):
+        hours[column] = [100.0 * j + k for k in range(12)]
+    return hours
 
 
 # --- persistence, the means and the lab features of an instant (D07, D12, D13) --------------------------------------------

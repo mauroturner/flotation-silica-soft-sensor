@@ -35,23 +35,9 @@ def view(quick_cfg):
     return dataclasses.replace(quick_cfg, features=dataclasses.replace(quick_cfg.features, min_fresh_history=1))
 
 
-def case_hours(rows: int = 12) -> pd.DataFrame:
-    """The twelve hours of the freshness case with their states and, per hour k, a value that says which hour it came from: the aggregate j
-    is ``100 * j + k``, the feed of silica ``16 + k / 10`` and of iron ``55 + k / 10``, their ages ``k`` and ``k + 0.5``."""
-    case = hc.freshness_case()
-    hours = pd.DataFrame({
-        "hour": case.first_rows["hour"], "rows": rows, "lab_state": case.expected_states, "silica_pct": case.first_rows["silica_pct"],
-        "feed_silica_pct": [16 + k / 10 for k in range(12)], "feed_iron_pct": [55 + k / 10 for k in range(12)],
-        "feed_silica_age_h": [float(k) for k in range(12)], "feed_iron_age_h": [k + 0.5 for k in range(12)],
-    })
-    for j, column in enumerate(AGGREGATE_COLUMNS):
-        hours[column] = [100.0 * j + k for k in range(12)]
-    return hours
-
-
 @pytest.fixture(scope="module")
 def tables(view) -> HourTables:
-    return HourTables.from_hours(case_hours(), view)
+    return HourTables.from_hours(hc.case_hours(), view)
 
 
 # --- the hand case: what the plant knows when an hour closes (D06, D12) ------------------------------------------------------
@@ -234,6 +220,8 @@ def test_feature_code_never_reads_iron_concentrate_lab_rows_or_ramp_marks():
         for word in NEVER:
             assert re.search(rf"\b{word}\b", text) is None, f"{word!r} in {scope}: {text!r}"
         assert PATTERN.search(text) is None, f"a laboratory value of a row in {scope}: {text!r}"
+    # the label of a target hour is read by the fit and the evaluation, never by the code that makes features
+    assert {scope for scope, text in things if text == "analysis_of"} <= {"HourTables.analysis_of", "HourTables"}
     # the state of an hour is read only to keep the fresh analyses of the history (D05), in the two places that build it
     holders = {scope for scope, text in things if re.search(r"\blab_state\b", text)}
     assert holders and holders <= {"HourTables.__init__", "inputs_at"}, holders

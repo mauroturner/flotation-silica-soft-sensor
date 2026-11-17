@@ -24,7 +24,7 @@ import re
 import tomllib
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any, get_args, get_origin, get_type_hints
 
@@ -455,30 +455,9 @@ def _check_calendar(cfg: PipelineConfig) -> None:
         raise ValueError(
             f"[hours] first_hour: se esperaba first_hour < launch_last_hour < last_hour, se recibió {h.first_hour}, {d.launch_last_hour} y {h.last_hour}"
         )
-    blocks = (("train", s.train_first, s.train_last), ("valid_v1", s.v1_first, s.v1_last), ("valid_v2", s.v2_first, s.v2_last),
-              ("test", s.test_first, s.test_last))
-    for name, first, last in blocks:
-        if first > last:
-            raise ValueError(f"[split] {name}: la primera hora ({first}) es posterior a la última ({last})")
-    if s.train_first < h.first_hour:
-        raise ValueError(f"[split] train_first: no puede ser anterior a first_hour de [hours] ({h.first_hour}), se recibió {s.train_first}")
-    # The last analysis of the test arrives at test_last + latency_hours and the close waits until last_hour + latency_hours (D10, D21). The
-    # same shift on both sides cancels, so the check is the one of the calendar, whatever the latency.
-    if s.test_last > h.last_hour:
-        raise ValueError(
-            f"[split] test_last: no puede ser posterior a last_hour ({h.last_hour}), se recibió {s.test_last}: el último análisis de la prueba "
-            f"llega en test_last + latency_hours y el cierre espera hasta last_hour + latency_hours ({lab.latency_hours} h), el mismo desfase "
-            f"en los dos lados, de modo que el último análisis debe llegar dentro del cierre"
-        )
-    # every edge between two consecutive blocks keeps purge_hours whole hours that belong to neither block (AC09)
-    edges = (("train", "valid_v1", s.train_last, s.v1_first), ("valid_v1", "valid_v2", s.v1_last, s.v2_first),
-             ("valid_v2", "test", s.v2_last, s.test_first))
-    for before, after, last, first in edges:
-        between = (first - last) // timedelta(hours=1) - 1
-        if between < s.purge_hours:
-            raise ValueError(
-                f"borde {before} → {after}: se esperaba una purga de {s.purge_hours} h entre {last} y {first}, hay {max(between, 0)} h"
-            )
+    from flotsilica.split import check_split
+
+    check_split(cfg)      # the blocks, the first and the last hour of the data and a purge at every boundary (AC09): split.py is their one home
     if d.launch_last_hour < s.v2_last:
         raise ValueError(f"[deliveries] launch_last_hour: el lanzamiento debe incluir todo V2 (v2_last = {s.v2_last}), se recibió {d.launch_last_hour}")
     if d.launch_last_hour >= s.test_first:
