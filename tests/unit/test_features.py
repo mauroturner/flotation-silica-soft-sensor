@@ -143,7 +143,7 @@ def test_the_values_of_an_instant_made_without_frames_are_those_of_its_inputs_at
 
 
 def test_the_analyses_known_at_an_instant_are_the_ones_of_lab_known_at_in_its_order_whatever_the_frame_is():
-    """``_known_arrays`` (what ``feature_row`` reads) is ``lab_known_at`` without its frame: shuffled rows, repeated sample hours, a missing instant, another
+    """``_known_arrays`` (what ``feature_row`` reads) is ``lab_known_at`` without its frame, its newest sample hour and every silica value: shuffled rows, repeated sample hours, a missing instant, another
     resolution, an arrival that is exactly the instant and a time zone, which goes through ``lab_known_at`` itself."""
     base = pd.Timestamp("2017-03-10 00:00")
     hours = [base + timedelta(hours=k) for k in (5, 1, 3, 3, 0, 8, 2)]
@@ -155,10 +155,14 @@ def test_the_analyses_known_at_an_instant_are_the_ones_of_lab_known_at_in_its_or
         for t in [base + timedelta(hours=k) for k in range(-1, 14)] + [base + timedelta(hours=4, minutes=1)]:
             instant = t.tz_localize("UTC") if name == "zone" else t
             known = lab_known_at(lab, instant)
-            sample, silica = _known_arrays(lab, instant)
+            newest, silica = _known_arrays(lab, instant)
             assert silica.tobytes() == known["silica_pct"].to_numpy(dtype="float64").tobytes(), (name, t)
-            newest = known["sample_hour"].tolist()[-1:]
-            assert [x.value if x is not pd.NaT else None for x in sample[-1:]] == [x.value if x is not pd.NaT else None for x in newest], (name, t)
+            expected = known["sample_hour"].iloc[-1] if len(known) else None
+            assert _stamp(newest) == _stamp(expected), (name, t)
+
+
+def _stamp(hour: pd.Timestamp | None) -> int | None:
+    return None if hour is None or hour is pd.NaT else hour.value
 
 
 # --- what is missing: a blank block and its reason ----------------------------------------------------------------------------

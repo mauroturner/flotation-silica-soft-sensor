@@ -224,17 +224,19 @@ _AGGREGATES = slice(0, len(AGGREGATE_COLUMNS))
 _FEED = slice(len(FEATURE_COLUMNS) - len(FEED_FEATURE_COLUMNS), len(FEATURE_COLUMNS))
 
 
-def _known_arrays(lab: pd.DataFrame, t: datetime) -> tuple[Any, np.ndarray]:
-    """``(sample hours, silica)`` of ``lab_known_at(lab, t)``, in its order, without making its frame: the sample hours as a sequence of timestamps and the silica as a float
-    array. A history whose two instants are not plain datetime64 columns goes through ``lab_known_at`` itself."""
+def _known_arrays(lab: pd.DataFrame, t: datetime) -> tuple[pd.Timestamp | None, np.ndarray]:
+    """``(newest sample hour, silica)`` of ``lab_known_at(lab, t)`` without making its frame: the sample hour of its last analysis as a timestamp (``None`` when nothing
+    has arrived) and the silica of every analysis as a float array, in its order. A history whose two instants are not plain datetime64 columns goes through
+    ``lab_known_at`` itself."""
     hours, available = lab["sample_hour"], lab["available_at"]
     if pd.Timestamp(t).tzinfo is not None or not (isinstance(hours.dtype, np.dtype) and isinstance(available.dtype, np.dtype) and hours.dtype.kind == available.dtype.kind == "M"):
         known = lab_known_at(lab, t)
-        return known["sample_hour"].tolist(), known["silica_pct"].to_numpy(dtype="float64")
+        newest = pd.Timestamp(known["sample_hour"].iloc[-1]) if len(known) else None
+        return newest, known["silica_pct"].to_numpy(dtype="float64")
     arrived = available.to_numpy() <= pd.Timestamp(t).to_datetime64()
     sample, silica = hours.to_numpy()[arrived], lab["silica_pct"].to_numpy(dtype="float64")[arrived]
     order = np.argsort(sample, kind="stable")
-    return [pd.Timestamp(h) for h in sample[order][-1:]], silica[order]
+    return (pd.Timestamp(sample[order][-1]) if len(order) else None), silica[order]
 
 
 def _row_values(inputs: IssueInputs, view: Any) -> np.ndarray:
@@ -246,7 +248,7 @@ def _row_values(inputs: IssueInputs, view: Any) -> np.ndarray:
         # the producers of ``IssueInputs`` give the columns in the order of ``SENSOR_COLUMNS``: then the aggregates are the array without its first value
         taken = sensors.to_numpy(dtype="float64")[1:] if sensors.index.equals(_SENSOR_INDEX) else sensors[list(AGGREGATE_COLUMNS)].to_numpy(dtype="float64")
         values[_AGGREGATES] = taken
-    known_hours, silica = _known_arrays(inputs.lab_history, inputs.issue_at)
+    newest, silica = _known_arrays(inputs.lab_history, inputs.issue_at)
     if len(silica) >= view.features.min_fresh_history:
         for k in range(1, view.features.lab_last + 1):
             if len(silica) >= k:
@@ -254,7 +256,6 @@ def _row_values(inputs: IssueInputs, view: Any) -> np.ndarray:
         for m in view.features.lab_means:
             if len(silica) >= m:
                 values[_POSITION[f"lab_mean{m}"]] = float(np.mean(silica[-m:]))
-        newest = known_hours[-1]
         values[_POSITION[lab_names[-1]]] = (pd.Timestamp(inputs.issue_at) - timedelta(hours=view.lab.latency_hours) - newest) / HOUR
     if inputs.feed is not None:
         values[_FEED] = (inputs.feed.to_numpy(dtype="float64") if inputs.feed.index.equals(_FEED_INDEX)
