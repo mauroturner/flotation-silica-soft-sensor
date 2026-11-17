@@ -280,7 +280,7 @@ def test_applying_the_schema_again_keeps_the_estimates_and_gives_an_older_wareho
     conn = connect(h.paths.db)
     try:
         before = dump(conn)
-        triggers = lambda: sorted(r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'"))   # noqa: E731
+        triggers = lambda: sorted(r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name NOT LIKE 'eval_%'"))   # noqa: E731
         assert len(triggers()) == 9
         apply_schema(conn)
         assert dump(conn) == before and len(triggers()) == 9

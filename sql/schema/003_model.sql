@@ -83,3 +83,187 @@ BEGIN SELECT RAISE(ABORT, 'method_estimates es de solo inserción: lo que dijo u
 CREATE TRIGGER IF NOT EXISTS method_estimates_no_second_insert BEFORE INSERT ON method_estimates
 WHEN EXISTS (SELECT 1 FROM method_estimates WHERE target_hour = NEW.target_hour AND horizon = NEW.horizon AND method = NEW.method)
 BEGIN SELECT RAISE(ABORT, 'method_estimates es de solo inserción: lo que dijo ese método ya se guardó'); END;
+
+-- The evaluation (plan, sections 5 and 16; D16, D18, D19): what the launch and the test measured, with the state of the seal each number was made under.
+-- ``seal_state`` is 'sealed' (the sealed configuration: the triggers below refuse to change, remove or write again a sealed row) or 'post_seal' (another
+-- configuration, M05: replaced when the run repeats and never in place of a sealed row). ``scope`` is the block the figures are of: the validation blocks come from
+-- the launch and are labelled as such wherever they are shown, the test from the one evaluation.
+
+CREATE TABLE IF NOT EXISTS eval_selection (
+    horizon INTEGER NOT NULL,
+    candidate TEXT NOT NULL,
+    family TEXT NOT NULL,
+    feature_set TEXT NOT NULL,
+    target TEXT NOT NULL,
+    min_samples_leaf INTEGER NOT NULL,
+    mae_v1 REAL NOT NULL,
+    chosen INTEGER NOT NULL CHECK (chosen IN (0, 1)),
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (horizon, candidate, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_baselines (
+    horizon INTEGER NOT NULL,
+    method TEXT NOT NULL,
+    k INTEGER,
+    mae_v1 REAL NOT NULL,
+    cohort_v1 INTEGER NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (horizon, method, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_metrics (
+    scope TEXT NOT NULL CHECK (scope IN ('valid_v1', 'valid_v2', 'test')),
+    horizon INTEGER NOT NULL,
+    method TEXT NOT NULL,
+    metric TEXT NOT NULL CHECK (metric IN ('hours', 'mae', 'rmse', 'bias', 'coverage')),
+    value REAL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (scope, horizon, method, metric, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_bootstrap (
+    comparison TEXT NOT NULL,
+    horizon INTEGER NOT NULL,
+    difference REAL NOT NULL,
+    ci_low REAL NOT NULL,
+    ci_high REAL NOT NULL,
+    resamples INTEGER NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (comparison, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_criteria (
+    criterion_id TEXT NOT NULL,
+    name_es TEXT NOT NULL,
+    value REAL,
+    baseline_value REAL,
+    ci_low REAL,
+    ci_high REAL,
+    threshold_es TEXT NOT NULL,
+    passed INTEGER CHECK (passed IN (0, 1)),
+    seen_by_research TEXT NOT NULL,
+    seen_by_planner TEXT NOT NULL,
+    verdict_es TEXT NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (criterion_id, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_weekly (
+    week TEXT NOT NULL,
+    horizon INTEGER NOT NULL,
+    method TEXT NOT NULL,
+    mae REAL NOT NULL,
+    hours INTEGER NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (week, horizon, method, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_variants (
+    variant TEXT NOT NULL,
+    horizon INTEGER NOT NULL,
+    method TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    value REAL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (variant, horizon, method, metric, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_leakage (
+    check_id TEXT NOT NULL,
+    description_es TEXT NOT NULL,
+    mae REAL NOT NULL,
+    r2 REAL NOT NULL,
+    rows INTEGER NOT NULL,
+    note_es TEXT NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (check_id, seal_state)
+);
+
+CREATE TRIGGER IF NOT EXISTS eval_selection_sealed_no_update BEFORE UPDATE ON eval_selection WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_selection: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_selection_sealed_no_delete BEFORE DELETE ON eval_selection WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_selection: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_selection_sealed_no_second_insert BEFORE INSERT ON eval_selection
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_selection WHERE seal_state = 'sealed' AND horizon = NEW.horizon AND candidate = NEW.candidate)
+BEGIN SELECT RAISE(ABORT, 'eval_selection: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_baselines_sealed_no_update BEFORE UPDATE ON eval_baselines WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_baselines: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_baselines_sealed_no_delete BEFORE DELETE ON eval_baselines WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_baselines: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_baselines_sealed_no_second_insert BEFORE INSERT ON eval_baselines
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_baselines WHERE seal_state = 'sealed' AND horizon = NEW.horizon AND method = NEW.method)
+BEGIN SELECT RAISE(ABORT, 'eval_baselines: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_metrics_sealed_no_update BEFORE UPDATE ON eval_metrics WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_metrics: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_metrics_sealed_no_delete BEFORE DELETE ON eval_metrics WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_metrics: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_metrics_sealed_no_second_insert BEFORE INSERT ON eval_metrics
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_metrics WHERE seal_state = 'sealed' AND scope = NEW.scope AND horizon = NEW.horizon AND method = NEW.method AND metric = NEW.metric)
+BEGIN SELECT RAISE(ABORT, 'eval_metrics: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_bootstrap_sealed_no_update BEFORE UPDATE ON eval_bootstrap WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_bootstrap: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_bootstrap_sealed_no_delete BEFORE DELETE ON eval_bootstrap WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_bootstrap: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_bootstrap_sealed_no_second_insert BEFORE INSERT ON eval_bootstrap
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_bootstrap WHERE seal_state = 'sealed' AND comparison = NEW.comparison)
+BEGIN SELECT RAISE(ABORT, 'eval_bootstrap: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_criteria_sealed_no_update BEFORE UPDATE ON eval_criteria WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_criteria: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_criteria_sealed_no_delete BEFORE DELETE ON eval_criteria WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_criteria: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_criteria_sealed_no_second_insert BEFORE INSERT ON eval_criteria
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_criteria WHERE seal_state = 'sealed' AND criterion_id = NEW.criterion_id)
+BEGIN SELECT RAISE(ABORT, 'eval_criteria: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_weekly_sealed_no_update BEFORE UPDATE ON eval_weekly WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_weekly: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_weekly_sealed_no_delete BEFORE DELETE ON eval_weekly WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_weekly: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_weekly_sealed_no_second_insert BEFORE INSERT ON eval_weekly
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_weekly WHERE seal_state = 'sealed' AND week = NEW.week AND horizon = NEW.horizon AND method = NEW.method)
+BEGIN SELECT RAISE(ABORT, 'eval_weekly: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_variants_sealed_no_update BEFORE UPDATE ON eval_variants WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_variants: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_variants_sealed_no_delete BEFORE DELETE ON eval_variants WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_variants: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_variants_sealed_no_second_insert BEFORE INSERT ON eval_variants
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_variants WHERE seal_state = 'sealed' AND variant = NEW.variant AND horizon = NEW.horizon AND method = NEW.method AND metric = NEW.metric)
+BEGIN SELECT RAISE(ABORT, 'eval_variants: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_leakage_sealed_no_update BEFORE UPDATE ON eval_leakage WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_leakage: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_leakage_sealed_no_delete BEFORE DELETE ON eval_leakage WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_leakage: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_leakage_sealed_no_second_insert BEFORE INSERT ON eval_leakage
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_leakage WHERE seal_state = 'sealed' AND check_id = NEW.check_id)
+BEGIN SELECT RAISE(ABORT, 'eval_leakage: una fila sellada es de solo inserción: ya está escrita'); END;

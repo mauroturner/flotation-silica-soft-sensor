@@ -8,6 +8,7 @@ three blocks of ``small_view``, which are before the gap."""
 from __future__ import annotations
 
 import shutil
+import sqlite3
 import types
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -17,6 +18,7 @@ import pandas as pd
 from flotsilica.deliveries import DeliverySpec
 from flotsilica.launch import fit_model
 from flotsilica.registry import load_registered_bundle, sealed_view
+from flotsilica.reporting import evaluate
 from flotsilica.scoring import RunMeta, score_run
 from flotsilica.warehouse import connect, load_delivery
 from tests.fixtures.tiny_model import small_view
@@ -44,7 +46,7 @@ def build_history(folder: Path, canonical, quick_cfg, plan=PLAN_A, **model) -> t
     view = small_view(quick_cfg, **model)
     sealed = sealed_view(view, SOURCE_SHA256)
     paths = types.SimpleNamespace(db=folder / "warehouse.sqlite", seal=folder / "reports" / "model_seal.json", models=folder / "models")
-    history = types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=[], fits=[], results=[], plan=())
+    history = types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=[], fits=[], results=[], evals=[], plan=())
     return _continue(history, canonical, plan)
 
 
@@ -65,6 +67,7 @@ def _continue(history, canonical, plan) -> types.SimpleNamespace:
             load_delivery(conn, rows, hours, delivery, run.run_key, history.view, sha256="f" * 64)
             history.fits.append(fit_model(conn, run, sealed, models_dir=paths.models, seal_path=paths.seal))
             history.results.append(score_run(conn, run, load_registered_bundle(conn, paths.models, sealed.model.model_version), sealed))
+            history.evals.append(evaluate(conn, run, sealed, seal_path=paths.seal, models_dir=paths.models))
             history.runs.append(run)
             previous = delivery.as_of
     finally:
@@ -77,7 +80,24 @@ def copy_history(history, target: Path) -> types.SimpleNamespace:
     """A copy of a history's warehouse, seal and models in `target`, for a test that writes."""
     shutil.copytree(history.paths.db.parent, target)
     paths = types.SimpleNamespace(db=target / "warehouse.sqlite", seal=target / "reports" / "model_seal.json", models=target / "models")
-    return types.SimpleNamespace(**{**vars(history), "paths": paths, "runs": list(history.runs), "fits": list(history.fits), "results": list(history.results)})
+    return types.SimpleNamespace(**{**vars(history), "paths": paths, "runs": list(history.runs), "fits": list(history.fits), "results": list(history.results), "evals": list(history.evals)})
+
+
+def without_sealed_rows(history, target):
+    """A copy of the history whose warehouse has no sealed row of the evaluation (what a rebuild from scratch has): the triggers that keep them are dropped in the
+    copy, and the rows of the test and of the criteria are deleted. The seal, with its test part, is the one of the history."""
+    h = copy_history(history, target)
+    conn = sqlite3.connect(h.paths.db)
+    try:
+        for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'eval_%'").fetchall():
+            conn.execute(f"DROP TRIGGER {name}")
+        for table in ("eval_criteria", "eval_bootstrap", "eval_weekly", "eval_variants"):
+            conn.execute(f"DELETE FROM {table}")
+        conn.execute("DELETE FROM eval_metrics WHERE scope = 'test'")
+        conn.commit()
+    finally:
+        conn.close()
+    return h
 
 
 def stamp(value) -> str:

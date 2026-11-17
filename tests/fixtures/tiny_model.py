@@ -32,20 +32,24 @@ def random_block(name: str, n: int, seed: int, horizon: int = 0, first: str = "2
 
 
 def random_blocks(seed: int = 0, sizes: tuple[int, int, int] = (200, 80, 80)) -> dict[str, BlockData]:
-    """The three blocks of a launch, one after the other, from independent draws."""
-    names = ("train", "valid_v1", "valid_v2")
-    return {name: random_block(name, n, seed + k) for k, (name, n) in enumerate(zip(names, sizes, strict=True))}
+    """The three blocks of a launch, one after the other in time (the hours do not repeat), from independent draws."""
+    names, offset, out = ("train", "valid_v1", "valid_v2"), 0, {}
+    for k, (name, n) in enumerate(zip(names, sizes, strict=True)):
+        out[name] = random_block(name, n, seed + k, first=str(pd.Timestamp("2017-05-01") + pd.Timedelta(hours=offset)))
+        offset += n
+    return out
 
 
 def small_view(quick_cfg, **model):
     """The quick configuration with the three launch blocks inside the small fixture (three weeks, the first stretch before the March gap): the training block
-    on 2017-03-10 to 03-13, V1 on 03-14 to 03-15 03:00 and V2 on 03-15 04:00 to 03-16 05:00, at least five fresh hours each, forests of 20 trees and leaves of 3.
+    on 2017-03-10 to 03-13, V1 on 03-14 to 03-15 03:00 and V2 on 03-15 04:00 to 03-16 05:00 and the test on the whole of 03-30 (after the gap: the history of ``history.py`` reaches the close of its last analysis), at least five fresh hours each, forests of 20 trees and leaves of 3.
     The windows are not a valid split (no purges): only ``block_of`` reads them, which is all the model code does."""
     def at(text: str) -> datetime:
         return pd.Timestamp(text).to_pydatetime()
 
     split = dataclasses.replace(quick_cfg.split, train_last=at("2017-03-13 23:00"), v1_first=at("2017-03-14 00:00"), v1_last=at("2017-03-15 03:00"),
-                                v2_first=at("2017-03-15 04:00"), v2_last=at("2017-03-16 05:00"), min_fresh_hours_per_block=5)
+                                v2_first=at("2017-03-15 04:00"), v2_last=at("2017-03-16 05:00"), test_first=at("2017-03-30 00:00"),
+                                test_last=at("2017-03-30 23:00"), min_fresh_hours_per_block=5)
     changes = {"rf_n_estimators": 20, "rf_min_samples_leaf": (3,), **model}
     return dataclasses.replace(quick_cfg, split=split, model=dataclasses.replace(quick_cfg.model, **changes))
 

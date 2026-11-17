@@ -3,9 +3,11 @@ resamples whole days with a seed."""
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from flotsilica.evaluation import day_bootstrap, metrics
@@ -101,3 +103,58 @@ def test_the_interval_refuses_what_cannot_be_resampled():
         day_bootstrap(np.array([1.0]), np.array([1.0]), np.array([0]), n=0, seed=0)
     one = day_bootstrap(np.array([0.5, 0.5]), np.array([0.25, 0.25]), np.array([0, 0]), n=20, seed=0)
     assert set(one.differences) == {0.25} and (one.ci_low, one.ci_high) == (0.25, 0.25), "one day: every resample is that day"
+
+
+# --- the evaluation of the test: frames in, figures and criteria out (U11; AC22) ------------------------------------------------------------------------
+
+
+def test_twelve_hour_hand_case(quick_cfg):
+    """The twelve hours of the hand case go through the evaluation as the three hours of H0 would: the numbers written by hand are the ones it gives."""
+    from flotsilica.evaluation import evaluate_frames, figures
+
+    case = hc.metrics_case()
+    frame = hc.metrics_frame()
+    view = dataclasses.replace(quick_cfg, evaluation=dataclasses.replace(quick_cfg.evaluation, bootstrap_resamples=300, horizons=(0,)),
+                               split=dataclasses.replace(quick_cfg.split, test_first=hc.DAY))
+    result = evaluate_frames({0: frame}, view)
+    figs = figures(result)["horizons"]["0"]
+    assert figs["hours"] == 12
+    model, persistence = figs["methods"]["model"], figs["methods"]["b1_persistence"]
+    assert model["mae"] == pytest.approx(case.mae_model) and model["bias"] == pytest.approx(case.bias_model) and model["rmse"] == pytest.approx(np.sqrt(0.34 / 12))
+    assert model["coverage"] == pytest.approx(case.coverage) and persistence["mae"] == pytest.approx(case.mae_persistence) and persistence["coverage"] is None
+    assert figs["methods"]["b_star"] == persistence and figs["methods"]["b0_train_mean"]["mae"] == pytest.approx(np.mean(np.abs(np.array(case.actual) - 2.3)))
+    boot = figures(result)["bootstraps"]["model_vs_b_star.h0"]
+    expected = day_bootstrap(np.array(case.model) - np.array(case.actual), np.array(case.persistence) - np.array(case.actual), frame.index.normalize().to_numpy(), n=300, seed=0)
+    assert boot["difference"] == pytest.approx(case.mae_difference) and boot["resamples"] == 300
+    assert boot["ci_low"] == pytest.approx(expected.ci_low) and boot["ci_high"] == pytest.approx(expected.ci_high)
+    assert [w["week"] for w in result.weekly if w["method"] == "model"] == ["2017-05-01"] and result.weekly[0]["hours"] == 12
+
+
+def test_the_error_by_week_counts_weeks_of_seven_days_from_the_first_hour_of_the_test_and_a_horizon_without_hours_has_no_figures(quick_cfg):
+    from flotsilica.evaluation import evaluate_frames, figures
+
+    start = quick_cfg.split.test_first
+    hours = pd.date_range(start, periods=24 * 10, freq="h", name="target_hour")          # ten days: a week of seven and a last one of three
+    rng = np.random.default_rng(1)
+    actual = 2.0 + rng.normal(scale=0.3, size=len(hours))
+    frame = pd.DataFrame({"actual": actual, "low": actual - 1, "high": actual + 1, **{m: actual + {"model": 0.1, "b1_persistence": 0.5}.get(m, 0.3) for m in (
+        "model", "b_star", "b0_train_mean", "b1_persistence", "b2_rolling", "b3_ridge_sensors", "best_sensors_only", "best_lab_only", "best_with_sensors")}}, index=hours)
+    result = evaluate_frames({0: frame, 1: frame.iloc[:0]}, dataclasses.replace(quick_cfg, evaluation=dataclasses.replace(quick_cfg.evaluation, bootstrap_resamples=50)))
+    model = [w for w in result.weekly if w["method"] == "model"]
+    assert [(w["week"], w["hours"]) for w in model] == [(start.strftime("%Y-%m-%d"), 168), ((start + timedelta(days=7)).strftime("%Y-%m-%d"), 72)]
+    assert all(w["mae"] == pytest.approx(0.1) for w in model) and {w["horizon"] for w in result.weekly} == {0} and {w["method"] for w in result.weekly} == {"model", "b1_persistence", "b_star"}
+    figs = figures(result)
+    assert figs["horizons"]["1"] == {"hours": 0, "methods": {}} and "model_vs_b_star.h1" not in figs["bootstraps"] and "model_vs_b_star.h0" in figs["bootstraps"]
+    assert figs["bootstraps"]["model_vs_b_star.h0"]["difference"] == pytest.approx(0.1 - 0.3) and figs["bootstraps"]["model_vs_b_star.h0"]["ci_high"] < 0
+    assert figs["bootstraps"]["model_vs_b1_persistence.h0"]["difference"] == pytest.approx(0.1 - 0.5), "B* and the persistence are two methods: each has its own comparison"
+    assert set(figs["bootstraps"]) == {"model_vs_b_star.h0", "model_vs_b1_persistence.h0", "best_sensors_only_vs_b0_train_mean.h0", "best_with_sensors_vs_best_lab_only.h0"}
+
+
+def test_a_criterion_is_made_of_the_figures_alone_so_the_same_figures_give_the_same_criteria():
+    from flotsilica.evaluation import criteria_of
+
+    again = [c.seal_entry() for c in criteria_of(hc.losing_figures(), hc.SEALED_CRITERIA)]
+    assert again == [c.seal_entry() for c in criteria_of(hc.losing_figures(), hc.SEALED_CRITERIA)] and [e["id"] for e in again] == [f"C{i:02d}" for i in range(1, 11)]
+    c02 = next(e for e in again if e["id"] == "C02")
+    assert (c02["value"], c02["baseline_value"], c02["ci_low"], c02["ci_high"], c02["passed"]) == (0.537, 0.533, -0.03, 0.04, False)
+    assert next(e for e in again if e["id"] == "C07")["passed"] is True

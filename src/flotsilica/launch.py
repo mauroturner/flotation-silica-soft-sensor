@@ -10,7 +10,8 @@ section 3, step 5). Its hours come from the warehouse as it stood at the launch 
   seal is read (M05).
 
 ``fit_model`` takes the warehouse, the run and the paths instead of the pipeline's context (U17 wraps it in the task); the gate of the sensitivities (U12) is
-a function the caller passes: until then the seal says it was not computed.
+a function the caller passes: until then the seal says it was not computed. The launch also stores what the evaluation shows before the test (the selection, the
+baselines, V1 and V2 and the leak demonstration) with the state of the seal (``evalstore.store_launch``).
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from typing import Any
 
 import pandas as pd
 
+from flotsilica.evalstore import store_launch
 from flotsilica.features import HourTables
 from flotsilica.files import sha256_file
 from flotsilica.model import LaunchFit, fit_launch
@@ -51,12 +53,16 @@ NOT_COMPUTED_GATE = {"computed": False, "model": None, "passing": []}      # unt
 GateFn = Callable[[LaunchFit, Any], dict[str, Any]]
 
 
-def hour_tables(conn: sqlite3.Connection, as_of: Any, view: Any) -> HourTables:
-    """The ``HourTables`` of the hours that had closed at `as_of` (``stg_hours`` rebuilt for that instant, which reads ``lab_hours`` and ``hour_aggregates``
-    and nothing that arrived later)."""
+def hour_frame(conn: sqlite3.Connection, as_of: Any, view: Any) -> pd.DataFrame:
+    """The hours that had closed at `as_of` with their analysis, aggregates and arrival (``stg_hours`` rebuilt for that instant, which reads ``lab_hours`` and
+    ``hour_aggregates`` and nothing that arrived later)."""
     rebuild_staging(conn, pd.Timestamp(as_of).to_pydatetime(), view)
-    frame = pd.read_sql_query("SELECT * FROM stg_hours ORDER BY hour", conn, parse_dates={"hour": "%Y-%m-%d %H:%M:%S", "available_at": "%Y-%m-%d %H:%M:%S"})
-    return HourTables.from_hours(frame, view)
+    return pd.read_sql_query("SELECT * FROM stg_hours ORDER BY hour", conn, parse_dates={"hour": "%Y-%m-%d %H:%M:%S", "available_at": "%Y-%m-%d %H:%M:%S"})
+
+
+def hour_tables(conn: sqlite3.Connection, as_of: Any, view: Any) -> HourTables:
+    """The ``HourTables`` of ``hour_frame``."""
+    return HourTables.from_hours(hour_frame(conn, as_of, view), view)
 
 
 def validation_predictions(launch: LaunchFit) -> list[tuple[Any, int, float]]:
@@ -103,7 +109,8 @@ def fit_model(conn: sqlite3.Connection, run: RunMeta, view: Any, *, models_dir: 
         if state == "none":
             raise SealError("no hay sello: el lanzamiento lo escribe y esta corrida no es el lanzamiento (docs/runbook.md, R7)")
         return {"mode": "verify", "seal": state, "model_version": version, "config_sha256": config_sha256, "horizons": len(bundle.horizons)}
-    tables = hour_tables(conn, run.as_of, view)
+    frame = hour_frame(conn, run.as_of, view)
+    tables = HourTables.from_hours(frame, view)
     launch = fit_launch(tables, view)
     bundle = bundle_of(launch, view)
     artifact = models_dir / f"{version}.pkl"
@@ -120,7 +127,8 @@ def fit_model(conn: sqlite3.Connection, run: RunMeta, view: Any, *, models_dir: 
                        config_sha256=config_sha256, models=document["horizons"], selection=_selection(launch),
                        valid_predictions_sha256=document["valid_predictions_sha256"])
     state = write_launch_seal(seal_path, document)
+    stored = store_launch(conn, tables, launch, frame.set_index("hour")["iron_conc_pct"], view, "sealed" if state in ("written", "unchanged") else "post_seal", run.run_key)
     logger.info("fit_model %s: version %s, artifact %s, seal %s", run.run_key, version, digest[:12], state)
-    return {"mode": "launch", "seal": state, "model_version": version, "artifact_sha256": digest, "config_sha256": config_sha256,
+    return {"mode": "launch", "seal": state, "stored": stored, "model_version": version, "artifact_sha256": digest, "config_sha256": config_sha256,
             "horizons": [h["horizon"] for h in document["horizons"]], "valid_predictions_sha256": document["valid_predictions_sha256"]}
 

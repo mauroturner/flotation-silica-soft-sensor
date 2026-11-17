@@ -27,6 +27,14 @@ from tests.fixtures.history import SOURCE_SHA256, copy_history
 from tests.fixtures.seal_parts import evaluation_part
 
 
+def rows_of(db, sql, *args):
+    conn = sqlite3.connect(db)
+    try:
+        return conn.execute(sql, args).fetchone()[0]
+    finally:
+        conn.close()
+
+
 def as_other(history, **changes):
     """The sealed view of the history's configuration with a key of ``[evaluation]`` and, if given, of ``[model]`` changed."""
     view = history.view
@@ -38,7 +46,8 @@ def test_the_launch_of_the_history_wrote_its_part_with_what_the_model_and_the_re
     h = small_history
     seal = read_seal(h.paths.seal)
     launch = seal["launch"]
-    assert h.fits[0]["seal"] == "written" and [f["mode"] for f in h.fits] == ["launch", "verify", "verify", "verify"] and "test" not in seal
+    assert h.fits[0]["seal"] == "written" and [f["mode"] for f in h.fits] == ["launch", "verify", "verify", "verify"]
+    assert [e["test"] for e in h.evals] == ["pending", "pending", "pending", "written"] and seal["test"]["run_key"] == "r4"
     assert launch["config_sha256"] == config_fingerprint(h.sealed) and launch["source_sha256"] == SOURCE_SHA256 and launch["run_key"] == "r1"
     assert [x["horizon"] for x in launch["horizons"]] == [0, 1, 2] and all(x["half_width"] > 0 and x["b_star"] in ("b1_persistence", "b2_rolling") for x in launch["horizons"])
     conn = sqlite3.connect(h.paths.db)
@@ -52,8 +61,8 @@ def test_the_launch_of_the_history_wrote_its_part_with_what_the_model_and_the_re
     assert [f["seal"] for f in h.fits[1:]] == ["match"] * 3
 
 
-def test_a_repetition_of_the_launch_with_the_sealed_configuration_reproduces_the_sealed_values(small_history, tmp_path):
-    h = copy_history(small_history, tmp_path / "again")
+def test_a_repetition_of_the_launch_with_the_sealed_configuration_reproduces_the_sealed_values(small_launched, tmp_path):
+    h = copy_history(small_launched, tmp_path / "again")
     then = h.paths.seal.read_bytes()
     conn = connect(h.paths.db)
     try:
@@ -63,8 +72,8 @@ def test_a_repetition_of_the_launch_with_the_sealed_configuration_reproduces_the
     assert again["seal"] == "unchanged" and h.paths.seal.read_bytes() == then
 
 
-def test_another_config_after_the_seal_is_post_seal_and_the_seal_stays(small_history, tmp_path):
-    h = copy_history(small_history, tmp_path / "other")
+def test_another_config_after_the_seal_is_post_seal_and_the_seal_stays(small_launched, tmp_path):
+    h = copy_history(small_launched, tmp_path / "other")
     then, artifact = h.paths.seal.read_bytes(), (h.paths.models / "v1.pkl").read_bytes()
     other = as_other(h, model_version="v2", random_state=1)
     assert config_fingerprint(other) != config_fingerprint(h.sealed)
@@ -75,6 +84,9 @@ def test_another_config_after_the_seal_is_post_seal_and_the_seal_stays(small_his
     finally:
         conn.close()
     assert result["seal"] == "post_seal" and h.paths.seal.read_bytes() == then
+    # the tables of the other launch are post-seal rows next to the sealed ones, which are as they were
+    stored = {state: rows_of(h.paths.db, "SELECT COUNT(*) FROM eval_selection WHERE seal_state = ?", state) for state in ("sealed", "post_seal")}
+    assert stored == {"sealed": 15, "post_seal": 15} and result["stored"] == {"selection": True, "baselines": True, "validation": True, "leakage": True}
     assert (h.paths.models / "v1.pkl").read_bytes() == artifact and (h.paths.models / "v2.pkl").exists()
     # the same version with another model never takes the file of the registered one
     conn = connect(h.paths.db)
@@ -86,8 +98,8 @@ def test_another_config_after_the_seal_is_post_seal_and_the_seal_stays(small_his
     assert (h.paths.models / "v1.pkl").read_bytes() == artifact
 
 
-def test_evaluating_the_test_under_another_config_before_the_test_seal_is_refused(small_history, tmp_path):
-    h = copy_history(small_history, tmp_path / "refuse")
+def test_evaluating_the_test_under_another_config_before_the_test_seal_is_refused(small_launched, tmp_path):
+    h = copy_history(small_launched, tmp_path / "refuse")
     other = as_other(h)
     before = sorted(p.relative_to(tmp_path).as_posix() for p in (tmp_path / "refuse").rglob("*"))
     seal_bytes = h.paths.seal.read_bytes()

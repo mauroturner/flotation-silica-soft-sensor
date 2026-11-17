@@ -164,3 +164,62 @@ def tracking_case() -> TrackingCase:
         "available_at": [hour(12), hour(13), hour(14)],
     })
     return TrackingCase(estimates, analyses, {hour(11): 0, hour(12): 1, hour(12) + timedelta(minutes=30): 1, hour(13): 2, hour(14): 3, hour(20): 3})
+
+
+# --- the figures a criterion is made of (U11): a model that loses everywhere it was expected to, and one that wins ---------------------------------------
+
+
+def _method(mae: float, bias: float = 0.0, coverage: float | None = None) -> dict:
+    return {"mae": mae, "rmse": mae * 1.25, "bias": bias, "coverage": coverage}
+
+
+def _boot(difference: float, low: float, high: float) -> dict:
+    return {"difference": difference, "ci_low": low, "ci_high": high, "resamples": 2000}
+
+
+def figures_case(*, wins: bool) -> dict:
+    """The figures of a test evaluation as the seal stores them. With ``wins=False`` they are what D16 expected (the model does not beat persistence,
+    the intervals of the horizons cross zero, the coverage is inside its range, the bias is +0.104, the sensors alone beat the mean and add nothing to the
+    laboratory, no sensor is stable); with ``wins=True`` every comparison is in the model's favour."""
+    gain = -0.1 if wins else 0.004
+    horizons = {}
+    for h, (model, base) in enumerate(((0.537, 0.533), (0.622, 0.628), (0.690, 0.687))):
+        model = model - 0.3 if wins else model
+        horizons[str(h)] = {"hours": 480, "methods": {
+            "model": _method(model, 0.104 if h == 0 and not wins else 0.02, 0.762 if h == 0 else 0.74), "b_star": _method(base), "b1_persistence": _method(0.533 + 0.05 * h),
+            "b0_train_mean": _method(0.923), "b2_rolling": _method(base), "b3_ridge_sensors": _method(0.98),
+            "best_sensors_only": _method(0.78), "best_lab_only": _method(0.532), "best_with_sensors": _method(0.532 + (-0.02 if wins else 0.005)),
+        }}
+    horizons["0"]["methods"]["b1_persistence"] = _method(0.533)
+    bootstraps = {
+        **{f"model_vs_b_star.h{h}": _boot(-0.2 if wins else gain, -0.3 if wins else -0.03, -0.1 if wins else 0.04) for h in range(3)},
+        "best_sensors_only_vs_b0_train_mean.h0": _boot(-0.14, -0.24, -0.04),
+        "best_with_sensors_vs_best_lab_only.h0": _boot(-0.05 if wins else 0.005, -0.08 if wins else -0.001, -0.02 if wins else 0.02),
+    }
+    sensitivity = {"computed": True, "passing": ["amina_flow"], "kept_sign": ["amina_flow"]} if wins else {"computed": True, "passing": [], "kept_sign": []}
+    return {"horizons": horizons, "bootstraps": bootstraps, "sensitivity": sensitivity}
+
+
+def losing_figures() -> dict:
+    return figures_case(wins=False)
+
+
+def winning_figures() -> dict:
+    return figures_case(wins=True)
+
+
+SEALED_CRITERIA = {"c05_coverage_low": 0.75, "c05_coverage_high": 0.85, "c06_max_bias": 0.10, "leak_tripwire_ratio": 0.5}
+
+
+def metrics_frame() -> pd.DataFrame:
+    """The twelve hours of ``metrics_case`` as the frame of a horizon (``evaluation.evaluate_frames``): the analysis, the model with its range, the persistence as B* and
+    B1, and the other methods (B0 the mean of the analyses of the twelve hours, B2 the mean of the model and the persistence, the others the model)."""
+    case = metrics_case()
+    frame = pd.DataFrame({"actual": case.actual, "model": case.model, "b1_persistence": case.persistence}, index=pd.DatetimeIndex(case.hours, name="target_hour"))
+    frame["low"], frame["high"] = frame["model"] - case.half_width, frame["model"] + case.half_width
+    frame["b_star"] = frame["b1_persistence"]
+    frame["b0_train_mean"] = 2.3
+    frame["b2_rolling"] = (frame["model"] + frame["b1_persistence"]) / 2
+    for name in ("b3_ridge_sensors", "best_sensors_only", "best_lab_only", "best_with_sensors"):
+        frame[name] = frame["model"]
+    return frame
