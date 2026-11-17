@@ -36,6 +36,11 @@ def tables(small_canonical, small_history):
     return HourTables.from_hours(small_canonical.hours, small_history.sealed)
 
 
+def test_the_method_names_keep_their_published_order():
+    assert METHOD_NAMES == ("model", "b0_train_mean", "b1_persistence", "b2_rolling", "b3_ridge_sensors",
+                            "best_sensors_only", "best_lab_only", "best_with_sensors")
+
+
 def test_each_horizon_estimates_its_own_hour_with_what_the_instant_knew(bundle, tables, small_history):
     view, t = small_history.sealed, FULL_INSTANT
     estimates = score_issue(bundle, tables.inputs(t, view), view)

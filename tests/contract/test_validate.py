@@ -50,7 +50,8 @@ def result(report: ValidationReport, rule_id: str) -> RuleResult:
     return next(r for r in report.results if r.rule_id == rule_id)
 
 
-_MASTERS: dict[tuple[int, str], sqlite3.Connection] = {}      # the stores that were built, by delivery of the plan: every test gets a copy of one
+_MASTERS: dict[tuple[int, str], tuple[object, sqlite3.Connection]] = {}   # the stores that were built, by delivery of the plan: every test gets a copy of one;
+# each entry keeps its plan alive, so the id in its key cannot be reused by another object
 
 
 def store_until(published, delivery_id: str):
@@ -63,9 +64,11 @@ def store_until(published, delivery_id: str):
                 break
             _entry, rows, hours = published.items[spec.delivery_id]
             store.load(master, spec.delivery_id, rows, hours)
-        _MASTERS[key] = master
+        _MASTERS[key] = (published, master)
     conn = store.empty_store()
-    _MASTERS[key].backup(conn)
+    owner, master = _MASTERS[key]
+    assert owner is published
+    master.backup(conn)
     return conn
 
 

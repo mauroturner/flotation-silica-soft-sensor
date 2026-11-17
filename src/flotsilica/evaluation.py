@@ -26,7 +26,7 @@ from flotsilica import texts
 from flotsilica.baselines import eligible
 from flotsilica.features import HourTables, design
 from flotsilica.split import block_of
-from flotsilica.texts import CRITERIA, es
+from flotsilica.texts import CRITERIA
 
 PERCENTILES = (2.5, 97.5)
 METRIC_NAMES = ("hours", "mae", "rmse", "bias", "coverage")
