@@ -66,11 +66,11 @@ def build_parser(task_ids: tuple[str, ...] | None = None) -> argparse.ArgumentPa
     run.add_argument("--run-key", metavar="CLAVE", help="la corrida que se continúa (con --only o --from)")
 
     replay = commands.add_parser("replay", parents=[common], help="corridas seguidas, una por entrega pendiente, hasta agotarlas o hasta una entrega")
-    replay.add_argument("--until", metavar="ENTREGA", help="la última entrega que se corre, por su identificador (por ejemplo D2017-06-01T00; por defecto, todas las pendientes)")
+    replay.add_argument("--until", metavar="ENTREGA", help="la última entrega que se corre, por su identificador (por ejemplo D2017-06-01T00; por defecto, todas las pendientes; una anterior a la siguiente pendiente, o cualquiera si no queda ninguna, sale con 2)")
 
     task = commands.add_parser("task", parents=[common], help="una tarea de una corrida", description=f"Una tarea de una corrida{tasks}.")
     task.add_argument("task", choices=task_ids, metavar="TAREA")
-    task.add_argument("--run-key", metavar="CLAVE", help="la corrida a la que pertenece (una nueva si se omite)")
+    task.add_argument("--run-key", metavar="CLAVE", help="la corrida a la que pertenece (una nueva si se omite; una tarea desde load necesita la de una corrida que tiene su entrega: sin ella sale con 2)")
 
     fixture = commands.add_parser("make-fixture", help="escribe un archivo ARFF sintético para las pruebas y el modo rápido")
     fixture.add_argument("output", type=Path, metavar="SALIDA.arff", help="dónde se escribe; una ruta relativa se toma desde la carpeta del proyecto")

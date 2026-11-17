@@ -381,10 +381,10 @@ def test_open_advisories_match_review_file(project_root: Path, readme: str) -> N
     found = advisories(text)
     assert len(found) >= 20 and [key for key, status in found.items() if status not in STATUSES] == []
     fixed = [block for block in re.split(r"^(?=- \*\*)", text, flags=re.MULTILINE) if "Estado: **corregida**" in block]
-    assert len(fixed) == 12 and all(re.search(r"`[0-9a-f]{7}`", block.split("Estado: **corregida**")[1].splitlines()[0]) for block in fixed)
+    assert len(fixed) == 15 and all(re.search(r"`[0-9a-f]{7}`", block.split("Estado: **corregida**")[1].splitlines()[0]) for block in fixed)
     opened = sorted(f"{key}/{ident}" for (key, ident), status in found.items() if status == "abierta")
     [stated] = re.findall(r"^Advertencias abiertas: (.+)$", readme, flags=re.MULTILINE)
-    assert sorted(re.findall(r"`([^`]+)`", stated)) == opened and len(opened) == 5, stated
+    assert sorted(re.findall(r"`([^`]+)`", stated)) == opened and len(opened) == 4, stated
 
 
 def test_the_root_rows_of_project_05_carry_the_real_figures(project_root: Path) -> None:
@@ -395,3 +395,37 @@ def test_the_root_rows_of_project_05_carry_the_real_figures(project_root: Path) 
         assert figure in rows, figure
     assert rows.count("no supera") >= 2 and "C01" in rows and "C07" in rows and "C09" in rows and "pendiente" in rows and "@gmail" not in rows
     assert not re.search(r"[A-Za-z]:[\\/]+(Users|Documents and Settings)", rows) and "Users" not in rows
+
+
+# a criterion named alone (not the end or the start of a range such as «C01-C04»), then, before any other criterion, «de <límite> a <límite>»
+INTERVAL = re.compile(r"(?<![-–])\b(C0[23478])\b(?![-–])((?:(?!C\d\d)[^\n]){0,260}?)\bde ([−-]?\d+,\d+) a ([−-]?\d+,\d+)")
+
+
+def quoted_bound(text: str) -> tuple[float, int]:
+    """A bound as a document writes it («−0,053»): its value and its number of decimals."""
+    sign, digits = (-1.0, text[1:]) if text[0] in "−-" else (1.0, text)
+    return sign * float(digits.replace(",", ".")), len(digits.split(",")[1])
+
+
+def test_every_interval_bound_the_documents_quote_is_the_summary_s(project_root: Path, readme: str, model_card: str, summary: dict) -> None:
+    """B3 of the evaluation (L66): three bounds were rounded by hand and came out wrong in D47 and ``SITE-UPDATES.md``. Every interval of C02-C04, C07 and C08 that D47, the
+    README, the model card and the root rows quote is the summary's, rounded to the decimals the document writes; D47, the README and the root rows write three (the verdicts
+    the flow writes, copied into the README and the model card, write two)."""
+    decisions = read(project_root, "decisions.md")
+    d47 = decisions.split("\n## D47 ")[1].split("\n## D48 ")[0]
+    intervals = {c["criterion_id"]: (c["ci_low"], c["ci_high"]) for c in summary["criteria"] if c["ci_low"] is not None}
+    assert sorted(intervals) == ["C02", "C03", "C04", "C07", "C08"]
+    wrong, seen = [], {}
+    for name, text in (("D47", d47), ("README.md", readme), ("docs/model-card.md", model_card), ("SITE-UPDATES.md (05)", root_rows(project_root))):
+        found = INTERVAL.findall(text)
+        seen[name] = {criterion for criterion, *_rest in found}
+        for criterion, _between, low, high in found:
+            for written, value in ((low, intervals[criterion][0]), (high, intervals[criterion][1])):
+                number, decimals = quoted_bound(written)
+                if f"{number:.{decimals}f}" != f"{value:.{decimals}f}":
+                    wrong.append(f"{name}: {criterion} writes {written}, the summary rounds to {value:.{decimals}f}")
+    assert wrong == []
+    assert seen["D47"] == seen["SITE-UPDATES.md (05)"] == set(intervals) and seen["docs/model-card.md"] == set(intervals), seen   # the check is not vacuous
+    assert {"C02", "C03", "C04"} <= seen["README.md"], seen
+    three = [m for name, text in (("D47", d47), ("SITE-UPDATES.md (05)", root_rows(project_root))) for m in INTERVAL.findall(text)]
+    assert all(quoted_bound(low)[1] == quoted_bound(high)[1] == 3 for _c, _b, low, high in three)

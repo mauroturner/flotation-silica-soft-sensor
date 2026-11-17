@@ -226,6 +226,28 @@ def test_a_rejected_run_leaves_every_published_file_and_the_warehouse_byte_ident
     assert published_digest(cfg) == before and state_file(cfg, "bad-source")["status"] == "rejected"
 
 
+def test_a_v01_rejection_writes_only_the_validation_report_and_the_run_state(pipeline_launched, tmp_path, quick_cfg):
+    """Plan section 6, V01, as corrected after the evaluation (L66): a source that is not the pinned one changes neither the warehouse, nor the model, nor the seal, nor any
+    file of ``outputs/`` or the dashboard; what it writes is the validation report (``latest`` and the run's copy in ``history/``, both versioned in the real configuration),
+    which records the rejection, and the state of the rejected run."""
+    state = copy_state(pipeline_launched, tmp_path / "state", quick_cfg)
+    cfg = state.cfg
+    source = Path(cfg.source.path)
+    source.write_bytes(source.read_bytes() + b"\n% changed after the hash was registered\n")
+    before = tree_digest(state.root)
+    with pytest.raises(ValidationError, match="V01"):
+        pipeline.run_task("fetch_source", "v01", cfg)
+    after = tree_digest(state.root)
+    changed = sorted(path for path in set(before) | set(after) if before.get(path) != after.get(path))
+    assert changed == ["interim/runs/v01.json", "reports/validation/history/v01.json", "reports/validation/history/v01.md",
+                       "reports/validation/latest.json", "reports/validation/latest.md"]
+    latest = json.loads((Path(cfg.paths.reports_dir) / "validation" / "latest.json").read_text(encoding="utf-8"))
+    assert latest["blocking_failed"] is True and latest["run_key"] == "v01"
+    kept = [Path(cfg.paths.warehouse), Path(cfg.paths.models_dir), Path(cfg.paths.seal), Path(cfg.paths.outputs_dir).parent, Path(cfg.paths.dashboard_html)]
+    assert all(path.exists() for path in kept)   # the comparison above covers each: they are there and did not change
+    assert state_file(cfg, "v01")["status"] == "rejected"
+
+
 # --- the close ------------------------------------------------------------------------------------------------------------------
 
 
