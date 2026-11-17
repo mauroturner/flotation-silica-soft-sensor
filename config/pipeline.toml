@@ -1,0 +1,121 @@
+# Pipeline configuration (plan, section 4). Every default lives here; config/pipeline.quick.toml starts from it.
+# Relative paths are resolved against the project folder, never against the working directory (D31).
+# Keys that can change a sealed value enter the seal's config_sha256 (FINGERPRINT_KEYS in src/flotsilica/config.py);
+# the others (UNSEALED_KEYS) do not: the rest of [source], [site], [api] and [paths].
+
+[source]                             # D02, D03
+path = "data/raw/openml-43311-quality-prediction-mining-process.arff"
+accepted_bytes = 185243565
+accepted_sha256 = "a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2"
+max_bytes = 268435456                # 256 MiB
+max_rows = 1000000
+max_line_bytes = 4096
+relation = "Quality-Prediction-in-a-Mining-Process"
+attributes = ["date", "%_Iron_Feed", "%_Silica_Feed", "Starch_Flow", "Amina_Flow", "Ore_Pulp_Flow",
+  "Ore_Pulp_pH", "Ore_Pulp_Density", "Flotation_Column_01_Air_Flow", "Flotation_Column_02_Air_Flow",
+  "Flotation_Column_03_Air_Flow", "Flotation_Column_04_Air_Flow", "Flotation_Column_05_Air_Flow",
+  "Flotation_Column_06_Air_Flow", "Flotation_Column_07_Air_Flow", "Flotation_Column_01_Level",
+  "Flotation_Column_02_Level", "Flotation_Column_03_Level", "Flotation_Column_04_Level",
+  "Flotation_Column_05_Level", "Flotation_Column_06_Level", "Flotation_Column_07_Level",
+  "%_Iron_Concentrate", "%_Silica_Concentrate"]
+
+[hours]                              # D04, D08
+rows_per_hour = 180
+min_rows_per_hour = 90
+first_hour = 2017-03-10T01:00:00
+last_hour = 2017-09-09T23:00:00
+
+[lab]                                # D05, D06
+latency_hours = 2
+
+[deliveries]                         # D21
+launch_last_hour = 2017-07-31T23:00:00
+cadence_hours = 24
+
+[split]                              # D10; every edge needs purge_hours
+train_first = 2017-03-10T01:00:00
+train_last = 2017-05-31T23:00:00
+v1_first = 2017-06-02T00:00:00
+v1_last = 2017-06-30T23:00:00
+v2_first = 2017-07-02T00:00:00
+v2_last = 2017-07-30T23:00:00
+test_first = 2017-08-01T00:00:00
+test_last = 2017-09-09T23:00:00
+purge_hours = 24
+min_fresh_hours_per_block = 100      # M06
+
+[features]                           # D12
+sets = ["fS", "fL", "fSL", "fSLF"]
+lab_last = 3
+lab_means = [6, 24]
+min_fresh_history = 24
+
+[model]                              # D11, D14
+families = ["hgb", "rf"]
+targets = ["level", "change"]
+hgb_learning_rate = 0.05
+hgb_max_iter = 300
+hgb_max_leaf_nodes = 15
+hgb_min_samples_leaf = [20, 50]
+hgb_l2_regularization = 1.0
+rf_n_estimators = 300
+rf_max_features = 0.33
+rf_min_samples_leaf = [5, 20]
+random_state = 0
+refit_on = ["train", "valid_v1"]
+model_version = "v1"
+
+[baselines]                          # D13
+rolling_k = [3, 6, 12, 24]
+ridge_alpha = 1.0
+strongest_candidates = ["b1_persistence", "b2_rolling"]   # in order of simplicity, for the tie-break
+
+[intervals]                          # D15
+coverage = 0.80
+calibrate_on = "valid_v2"
+
+[evaluation]                         # D07, D17
+horizons = [0, 1, 2]
+bootstrap_resamples = 2000
+bootstrap_seed = 0
+
+[sensitivity]                        # D20
+permutation_repeats = 5
+refits = 5
+pd_grid_points = 15
+pd_low_quantile = 0.05
+pd_high_quantile = 0.95
+min_importance_mae = 0.01
+min_abs_spearman = 0.5
+seed = 0
+
+[variants]                           # D06, D11: reported, never used to choose
+latencies = [3, 4]
+refit_all = true
+
+[criteria]                           # preregistered (requirements.md 8.1, D16)
+c05_coverage_low = 0.75
+c05_coverage_high = 0.85
+c06_max_bias = 0.10
+leak_tripwire_ratio = 0.5            # M01 (D09)
+
+[site]
+max_total_bytes = 204800
+
+[api]                                # D27
+host = "127.0.0.1"
+port = 8000
+max_lab_history = 48
+
+[paths]
+raw_dir = "data/raw"
+interim_dir = "data/interim"
+warehouse = "data/warehouse/flotsilica.sqlite"
+models_dir = "data/models"
+outputs_dir = "outputs/powerbi"
+site_dir = "outputs/site"
+reports_dir = "reports"
+seal = "reports/model_seal.json"
+dashboard_html = "dashboard/powerbi-design.html"
+readme = "README.md"
+figures_dir = "docs/figures"

@@ -1,0 +1,50 @@
+# Quick mode for tests and development: the same pipeline on the synthetic fixture instead of the real ARFF (plan, section 4).
+# Starts from pipeline.toml (same folder) and overrides only what is listed here.
+#
+#   python -m flotsilica make-fixture data/quick/flotation_fixture.arff
+#   python -m flotsilica replay --config config/pipeline.quick.toml
+#
+# Everything the quick run reads and writes is under data/quick/ (git-ignored), resolved against the project folder: it never touches
+# the warehouse, the Parquet files, the HTML design, the reports, the seal, the figures or the README of the full run, and it does not
+# depend on the directory it is started from (D31). The fixture covers the same calendar as the source.
+extends = "pipeline.toml"
+
+[source]
+path = "data/quick/flotation_fixture.arff"
+accepted_bytes = 0                   # quick mode records the first hash it sees in data/quick/source.lock.json
+accepted_sha256 = ""
+
+[hours]
+rows_per_hour = 12
+min_rows_per_hour = 6
+
+[deliveries]
+cadence_hours = 240                  # 4 deliveries after the launch instead of 40
+
+[features]
+sets = ["fS", "fL", "fSL"]
+
+[model]                              # one family with 20 trees: the quick run is about where the files go and that the flow runs
+families = ["rf"]
+rf_n_estimators = 20
+rf_min_samples_leaf = [20]
+
+[evaluation]
+bootstrap_resamples = 200
+
+[sensitivity]
+refits = 2
+permutation_repeats = 2
+
+[paths]
+raw_dir = "data/quick/raw"
+interim_dir = "data/quick/interim"
+warehouse = "data/quick/flotsilica.sqlite"
+models_dir = "data/quick/models"
+outputs_dir = "data/quick/outputs/powerbi"
+site_dir = "data/quick/outputs/site"
+reports_dir = "data/quick/reports"
+seal = "data/quick/reports/model_seal.json"
+dashboard_html = "data/quick/dashboard/powerbi-design.html"
+readme = "data/quick/README.md"
+figures_dir = "data/quick/figures"
