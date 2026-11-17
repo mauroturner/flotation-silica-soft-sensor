@@ -343,3 +343,13 @@ def star_files(tmp_path_factory: pytest.TempPathFactory, small_history):
     finally:
         conn.close()
     return types.SimpleNamespace(history=history, run=run, out_dir=out_dir, paths=paths)
+
+
+@pytest.fixture(scope="session")
+def rendered_html(tmp_path_factory: pytest.TempPathFactory, star_files):
+    """The design of the report rendered once from the star model (U14, plan section 24.1): ``path`` (a file of its own) and ``html``."""
+    from flotsilica.dashboard.render import render_design
+    from flotsilica.dashboard.semantic_model import MODEL
+
+    path = render_design(MODEL, star_files.out_dir, tmp_path_factory.mktemp("design") / "dashboard" / "powerbi-design.html", star_files.run)
+    return types.SimpleNamespace(path=path, html=path.read_text(encoding="utf-8"))

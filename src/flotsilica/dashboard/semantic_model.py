@@ -3,11 +3,13 @@
 
 Tables with their columns (type, description, unit) and relationships (all one to many, single direction, active) live here; the Arrow schema of every Parquet file
 and, later, the data dictionary and the HTML design come from this module. Names of tables, columns and files are in English; descriptions and labels in Spanish
-(RNF13). The measures (DAX) and the five pages of the report come with U14.
+(RNF13). The measures (DAX) and the five pages of the report (a 12 x 9 grid of visuals) live here too (U14, plan section 20); ``validate_model`` checks that every DAX reference
+and every field of a visual is a column or a measure of the model, because no measure runs in the project.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -51,12 +53,42 @@ class Relationship:
 
 
 @dataclass(frozen=True)
+class Measure:
+    name_es: str
+    dax: str
+    format_string: str
+    description_es: str
+
+
+@dataclass(frozen=True)
+class Visual:
+    kind: str                     # slicer, card, table, barChart, lineChart
+    title_es: str
+    fields: tuple[str, ...]       # "table[column]" or "[Measure]"
+    x: int
+    y: int
+    w: int
+    h: int
+
+
+@dataclass(frozen=True)
+class Page:
+    name_es: str
+    visuals: tuple[Visual, ...]
+
+
+@dataclass(frozen=True)
 class SemanticModel:
     tables: tuple[Table, ...]
     relationships: tuple[Relationship, ...]
+    measures: tuple[Measure, ...] = ()
+    pages: tuple[Page, ...] = ()
 
     def table(self, name: str) -> Table:
         return next(t for t in self.tables if t.name == name)
+
+    def measure(self, name: str) -> Measure:
+        return next(m for m in self.measures if m.name_es == name)
 
 
 PCT = "% de sílice"
@@ -204,7 +236,120 @@ _RELATIONSHIPS = (
 RELATIONSHIPS: tuple[Relationship, ...] = tuple(
     Relationship(f"R{number:02d}", dim, key, fact, key) for number, (dim, key, fact) in enumerate(
         ((dim, key, fact) for dim, key, facts in _RELATIONSHIPS for fact in facts), start=1))
-MODEL = SemanticModel(TABLES, RELATIONSHIPS)
+PAGE_COLUMNS, PAGE_ROWS = 12, 9
+# --- the measures and the pages (plan, section 20; U14) ------------------------------------------------------------------------------------------------------------------
+
+INTEGER, PERCENT, DECIMAL_2, DECIMAL_3, DATETIME_FORMAT, TEXT_FORMAT = "#,0", "0.0%", "0.00", "0.000", "yyyy-mm-dd hh:mm", "@"
+_ARRIVED = "NOT ISBLANK ( fact_estimate[actual] )"
+_LAB_FRESH = 'fact_hour_lab[lab_state] = "fresh"'
+_SEALED_TEST = 'fact_method_metrics[scope] = "test", fact_method_metrics[seal_state] = "sealed"'
+
+MEASURES: tuple[Measure, ...] = (
+    Measure("Horas con análisis", f"CALCULATE ( COUNTROWS ( fact_estimate ), {_ARRIVED} )", INTEGER,
+            "Estimaciones (una por hora y horizonte) cuyo análisis fresco ya llegó; con el segmentador de horizonte, las de ese horizonte."),
+    Measure("MAE del modelo", f"CALCULATE ( AVERAGE ( fact_estimate[abs_error] ), {_ARRIVED} )", DECIMAL_3, "Error absoluto medio del modelo en las estimaciones cuyo análisis llegó (% de sílice)."),
+    Measure("MAE de la persistencia", f"CALCULATE ( AVERAGE ( fact_estimate[abs_error_persistence] ), {_ARRIVED} )", DECIMAL_3,
+            "Error absoluto medio de la persistencia (el último análisis fresco) en las mismas estimaciones."),
+    Measure("MAE de la base más fuerte", f"CALCULATE ( AVERAGE ( fact_estimate[abs_error_b_star] ), {_ARRIVED} )", DECIMAL_3,
+            "Error absoluto medio de B*, la base más fuerte de cada horizonte, en las mismas estimaciones."),
+    Measure("Modelo menos persistencia", "[MAE del modelo] - [MAE de la persistencia]", DECIMAL_3, "Diferencia de los dos errores: negativa si el modelo se equivoca menos que la persistencia."),
+    Measure("Sesgo del modelo", f"CALCULATE ( AVERAGEX ( fact_estimate, fact_estimate[estimate] - fact_estimate[actual] ), {_ARRIVED} )", DECIMAL_3,
+            "Media de la estimación menos el análisis: positiva si el modelo estima de más."),
+    Measure("Cobertura del rango", "DIVIDE ( CALCULATE ( COUNTROWS ( fact_estimate ), fact_estimate[covered] = TRUE () ), [Horas con análisis] )", PERCENT,
+            "Parte de las estimaciones con análisis llegado cuyo análisis cayó dentro del rango del 80 %."),
+    Measure("Última estimación", 'VAR h = CALCULATE ( MAX ( fact_estimate[hour_key] ), fact_estimate[status] = "ok", fact_estimate[horizon_key] = 0 )\n'
+                                 "    RETURN CALCULATE ( SELECTEDVALUE ( fact_estimate[estimate] ), fact_estimate[hour_key] = h, fact_estimate[horizon_key] = 0 )", DECIMAL_2,
+            "Estimación de la hora que cerró (horizonte 0) en la última hora estimada de las fechas elegidas; vacía si el segmentador de horizonte no incluye el 0."),
+    Measure("Último análisis llegado", f"VAR h = CALCULATE ( MAX ( fact_hour_lab[hour_key] ), NOT ISBLANK ( fact_hour_lab[silica_pct] ), {_LAB_FRESH} )\n"
+                                       "    RETURN CALCULATE ( SELECTEDVALUE ( fact_hour_lab[silica_pct] ), fact_hour_lab[hour_key] = h )", DECIMAL_2,
+            "Sílice del último análisis nuevo que llegó dentro de las fechas elegidas; el segmentador de horizonte no lo filtra."),
+    Measure("Horas sin estimación", 'CALCULATE ( COUNTROWS ( fact_estimate ), fact_estimate[status] = "missing_inputs" )', INTEGER, "Estimaciones que no se pudieron emitir por falta de entradas."),
+    Measure("Análisis frescos (%)", f"DIVIDE ( CALCULATE ( COUNTROWS ( fact_hour_lab ), {_LAB_FRESH} ), CALCULATE ( COUNTROWS ( fact_hour_lab ), NOT ISBLANK ( fact_hour_lab[silica_pct] ) ) )",
+            PERCENT, "Parte de los análisis llegados que son nuevos (no repetidos ni interpolados)."),
+    Measure("Horas interpoladas", "SUM ( fact_data_quality[interpolated] )", INTEGER, "Análisis interpolados que ya llegaron, en los días elegidos."),
+    Measure("Horas repetidas", "SUM ( fact_data_quality[held] )", INTEGER, "Análisis repetidos (sin análisis nuevo) que ya llegaron, en los días elegidos."),
+    Measure("Media del sensor", "AVERAGE ( fact_hour_process[mean] )", DECIMAL_2, "Media del sensor en las horas y los sensores elegidos; la fuente no dice la unidad."),
+    Measure("MAE en la prueba", f"CALCULATE ( SELECTEDVALUE ( fact_method_metrics[mae] ), {_SEALED_TEST} )", DECIMAL_3,
+            "Error absoluto medio de un método en un horizonte, en la prueba y con la configuración sellada (si no, una fila posterior al sello vaciaría la cifra)."),
+    Measure("Es la base más fuerte", f"CALCULATE ( SELECTEDVALUE ( fact_method_metrics[is_b_star] ), {_SEALED_TEST} )", TEXT_FORMAT,
+            "Verdadero si el método es B*, la base más fuerte de su horizonte (se elige en V1)."),
+    Measure("Sensores con asociación estable", "CALCULATE ( COUNTROWS ( fact_sensitivity ), fact_sensitivity[passes] = TRUE () )", INTEGER,
+            "Sensores que pasan la compuerta de estabilidad: una asociación del modelo, no una receta."),
+    Measure("Veredicto", 'CALCULATE ( SELECTEDVALUE ( fact_evaluation_summary[verdict_es] ), fact_evaluation_summary[seal_state] = "sealed" )', TEXT_FORMAT,
+            "Veredicto de un criterio con la configuración sellada."),
+    Measure("Semiancho del rango", "SELECTEDVALUE ( dim_model[half_width] )", DECIMAL_3, "Semiancho del rango del 80 % del modelo de un horizonte, calibrado en V2 (% de sílice)."),
+    Measure("Última fecha de cálculo", 'CALCULATE ( MAX ( dim_pipeline_run[as_of] ), dim_pipeline_run[status] = "ok" )', DATETIME_FORMAT, "Instante de cálculo de la última corrida terminada bien."),
+    Measure("Reglas bloqueantes fallidas", 'CALCULATE ( COUNTROWS ( fact_validation ), fact_validation[severity] = "bloqueante", fact_validation[status] = "falla" )', INTEGER,
+            "Resultados de reglas bloqueantes que fallaron, en las corridas cargadas."),
+)
+
+NOT_FILTERED_BY_HORIZON = " (no lo filtra el horizonte)"
+NOT_FILTERED_BY_DATE = " (no lo filtra la fecha)"
+_HOUR = "dim_hour[hour]"
+_OUR_ESTIMATE = ("fact_estimate[estimate]", "fact_estimate[low]", "fact_estimate[high]", "fact_hour_lab[silica_pct]", "fact_hour_lab[lab_state]", "fact_estimate[persistence]")
+PAGES: tuple[Page, ...] = (
+    Page("Sílice estimada y laboratorio", (
+        Visual("slicer", "Fecha", ("dim_hour[date]",), 0, 0, 6, 1),
+        Visual("slicer", "Horizonte", ("dim_horizon[horizon_es]",), 6, 0, 6, 1),
+        Visual("card", "Última estimación", ("[Última estimación]",), 0, 1, 2, 1),
+        Visual("card", "Último análisis llegado" + NOT_FILTERED_BY_HORIZON, ("[Último análisis llegado]",), 2, 1, 2, 1),
+        Visual("card", "MAE del modelo", ("[MAE del modelo]",), 4, 1, 2, 1),
+        Visual("card", "MAE de la persistencia", ("[MAE de la persistencia]",), 6, 1, 2, 1),
+        Visual("card", "Cobertura del rango", ("[Cobertura del rango]",), 8, 1, 2, 1),
+        Visual("card", "Horas sin estimación", ("[Horas sin estimación]",), 10, 1, 2, 1),
+        Visual("lineChart", "Sílice estimada con su rango, análisis y persistencia", (_HOUR, *_OUR_ESTIMATE), 0, 2, 12, 7),
+    )),
+    Page("Horizontes y reglas", (
+        Visual("card", "MAE de la base más fuerte (seguimiento)", ("[MAE de la base más fuerte]",), 0, 0, 4, 1),
+        Visual("card", "Modelo menos persistencia (seguimiento)", ("[Modelo menos persistencia]",), 4, 0, 4, 1),
+        Visual("card", "Sesgo del modelo (seguimiento)", ("[Sesgo del modelo]",), 8, 0, 4, 1),
+        Visual("barChart", "MAE por horizonte", ("dim_horizon[horizon_es]", "dim_method[method_es]", "fact_method_metrics[mae]"), 0, 1, 6, 4),
+        Visual("table", "MAE en V1, V2 y la prueba", ("fact_method_metrics[scope]", "dim_horizon[horizon_es]", "dim_method[method_es]", "fact_method_metrics[mae]"), 6, 1, 6, 4),
+        Visual("table", "En la prueba: el intervalo de la diferencia con B*", ("dim_horizon[horizon_es]", "dim_method[method_es]", "[MAE en la prueba]", "[Es la base más fuerte]",
+                                                                           "fact_method_metrics[ci_low_vs_b_star]", "fact_method_metrics[ci_high_vs_b_star]"), 0, 5, 7, 4),
+        Visual("lineChart", "MAE por semana de la prueba", ("fact_weekly_mae[test_week]", "fact_weekly_mae[mae]", "dim_method[method_es]"), 7, 5, 5, 4),
+    )),
+    Page("Variables de la planta", (
+        Visual("slicer", "Fecha", ("dim_hour[date]",), 0, 0, 6, 1),
+        Visual("slicer", "Sensor", ("dim_sensor[name_es]",), 6, 0, 6, 1),
+        Visual("lineChart", "Medias horarias de cada sensor en el día elegido", (_HOUR, "dim_sensor[name_es]", "[Media del sensor]"), 0, 1, 6, 8),
+        Visual("card", "Sensores con asociación estable" + NOT_FILTERED_BY_DATE, ("[Sensores con asociación estable]",), 6, 1, 6, 1),
+        Visual("table", "Compuerta de estabilidad: importancias, signo y asociación" + NOT_FILTERED_BY_DATE,
+               ("dim_sensor[name_es]", "fact_sensitivity[importance_v1]", "fact_sensitivity[importance_v2]", "fact_sensitivity[sign_stable]", "fact_sensitivity[passes]",
+                "fact_sensitivity[label_es]"), 6, 2, 6, 3),
+        Visual("lineChart", "Asociación del modelo, no una receta: dependencia parcial" + NOT_FILTERED_BY_DATE,
+               ("fact_pd_curve[grid_value]", "fact_pd_curve[mean_estimate]", "dim_sensor[name_es]"), 6, 5, 6, 4),
+    )),
+    Page("Validación del modelo", (
+        Visual("table", "Criterios C01-C10", ("fact_evaluation_summary[criterion_id]", "fact_evaluation_summary[name_es]", "fact_evaluation_summary[value]",
+                                              "fact_evaluation_summary[threshold_es]", "fact_evaluation_summary[seen_by_research]", "fact_evaluation_summary[seen_by_planner]",
+                                              "[Veredicto]"), 0, 0, 7, 3),
+        Visual("table", "Semiancho del rango del 80 % por horizonte", ("dim_model[model_key]", "dim_model[horizon_key]", "[Semiancho del rango]", "dim_model[b_star]", "dim_model[seal_state]"),
+               7, 0, 5, 3),
+        Visual("table", "Candidatos de cada horizonte, con su error en V1", ("dim_horizon[horizon_es]", "fact_selection[family]", "fact_selection[feature_set]", "fact_selection[target]",
+                                                                             "fact_selection[min_samples_leaf]", "fact_selection[mae_v1]", "fact_selection[chosen]"), 0, 3, 6, 3),
+        Visual("table", "Latencias, reajuste y todas las horas (informativo)", ("fact_variants[variant_es]", "fact_variants[horizon_key]", "fact_variants[method_key]", "fact_variants[mae]",
+                                                                               "fact_variants[hours]", "fact_variants[ci_low]", "fact_variants[ci_high]"), 6, 3, 6, 3),
+        Visual("table", "Demostración de la fuga: bloques, partición aleatoria y hierro del concentrado", ("fact_leakage[check_es]", "fact_leakage[mae]", "fact_leakage[r2]",
+                                                                                                          "fact_leakage[note_es]"), 0, 6, 12, 3),
+    )),
+    Page("Calidad de datos y corridas", (
+        Visual("card", "Análisis frescos (%)", ("[Análisis frescos (%)]",), 0, 0, 2, 1),
+        Visual("card", "Horas interpoladas", ("[Horas interpoladas]",), 2, 0, 2, 1),
+        Visual("card", "Horas repetidas", ("[Horas repetidas]",), 4, 0, 2, 1),
+        Visual("card", "Reglas bloqueantes fallidas", ("[Reglas bloqueantes fallidas]",), 6, 0, 3, 1),
+        Visual("card", "Última fecha de cálculo", ("[Última fecha de cálculo]",), 9, 0, 3, 1),
+        Visual("barChart", "Análisis llegados por día: nuevos, repetidos e interpolados", ("dim_date[date]", "fact_data_quality[fresh]", "fact_data_quality[held]", "fact_data_quality[interpolated]"),
+               0, 1, 8, 4),
+        Visual("table", "Horas sin datos por día (el hueco de marzo)", ("dim_date[date]", "fact_data_quality[missing_hours]", "fact_data_quality[partial_hours]",
+                                                                      "fact_data_quality[stuck_sensor_hours]"), 8, 1, 4, 4),
+        Visual("table", "Reglas de validación", ("fact_validation[rule_id]", "fact_validation[name_es]", "fact_validation[severity]", "fact_validation[rows_affected]",
+                                                 "fact_validation[hours_affected]", "fact_validation[status]"), 0, 5, 6, 4),
+        Visual("table", "Corridas", ("dim_pipeline_run[run_key]", "dim_pipeline_run[delivery_id]", "dim_pipeline_run[as_of]", "dim_pipeline_run[status]", "dim_pipeline_run[estimates_issued]",
+                                     "dim_pipeline_run[message]"), 6, 5, 6, 4),
+    )),
+)
+MODEL = SemanticModel(TABLES, RELATIONSHIPS, MEASURES, PAGES)
 
 
 def arrow_schema(table: Table) -> pa.Schema:
@@ -212,9 +357,122 @@ def arrow_schema(table: Table) -> pa.Schema:
     return pa.schema([pa.field(c.name, ARROW_TYPES[c.dtype]) for c in table.columns])
 
 
+# --- the static checks that stand in for running the measures (item 6 of the risks: no DAX runs anywhere in the project) -------------------------------------------------------------------
+
+_COLUMN_REF = re.compile(r"(?<![\w'])([A-Za-z_]\w*)\[(\w+)\]")
+_MEASURE_REF = re.compile(r"(?<![\w\]'])\[([^\[\]]+)\]")
+_FUNCTION_CALL = re.compile(r"\b([A-Z][A-Z0-9.]*)(?=\s*\()")
+_LITERAL_COMPARISON = re.compile(r'\b([a-z_]\w*)\[(\w+)\]\s*=\s*"([^"]*)"')
+_REMOVES_FILTERS = re.compile(r"\b(ALL|ALLEXCEPT|ALLSELECTED|REMOVEFILTERS|CROSSFILTER|USERELATIONSHIP|KEEPFILTERS)\b")
+DAX_FUNCTIONS = frozenset({"CALCULATE", "COUNTROWS", "AVERAGE", "AVERAGEX", "DIVIDE", "MAX", "SELECTEDVALUE", "SUM", "NOT", "ISBLANK", "TRUE"})
+
+
+def dax_column_refs(dax: str) -> set[tuple[str, str]]:
+    """The ``table[column]`` references of a DAX expression."""
+    return set(_COLUMN_REF.findall(dax))
+
+
+def dax_measure_refs(dax: str) -> set[str]:
+    """The ``[Measure]`` references of a DAX expression: a bracket not attached to a table."""
+    return set(_MEASURE_REF.findall(dax))
+
+
+def visual_tables(model: SemanticModel, visual: Visual) -> set[str]:
+    """The tables a visual reads: those of its columns and, through the DAX of its measures and of the measures they name, those the measures name by a column or whole."""
+    found: set[str] = set()
+    pending, seen = list(visual.fields), set()
+    while pending:
+        field = pending.pop()
+        if field.startswith("["):
+            name = field[1:-1]
+            measure = next((m for m in model.measures if m.name_es == name), None)
+            if measure is not None and name not in seen:
+                seen.add(name)
+                found |= {t.name for t in model.tables if re.search(rf"\b{t.name}\b", measure.dax)}
+                pending += [f"[{n}]" for n in dax_measure_refs(measure.dax)]
+        else:
+            found.add(field.split("[")[0])
+    return {t for t in found if any(table.name == t for table in model.tables)}
+
+
+def _field_problem(model: SemanticModel, field: str) -> str | None:
+    """Why the field of a visual does not resolve, or None."""
+    if field.startswith("["):
+        return None if any(f"[{m.name_es}]" == field for m in model.measures) else f"la medida {field} no existe"
+    match = re.fullmatch(r"([A-Za-z_]\w*)\[(\w+)\]", field)
+    if match is None:
+        return f"el campo {field!r} no es una columna ni una medida"
+    table, column = match.groups()
+    return None if any(t.name == table and column in t.column_names for t in model.tables) else f"la columna {field} no existe"
+
+
+def _measure_problems(model: SemanticModel) -> list[str]:
+    problems: list[str] = []
+    names = [m.name_es for m in model.measures]
+    problems += [f"la medida [{n}] está repetida" for n in sorted({n for n in names if names.count(n) > 1})]
+    columns = {t.name: {c.name: c for c in t.columns} for t in model.tables}
+    uses: dict[str, set[str]] = {}
+    for m in model.measures:
+        label = f"[{m.name_es}]"
+        if m.dax.count("(") != m.dax.count(")"):
+            problems.append(f"{label}: paréntesis sin cerrar en el DAX")
+        if m.dax.count('"') % 2:
+            problems.append(f"{label}: comillas sin cerrar en el DAX")
+        problems += [f"{label}: {t}[{c}] no existe" for t, c in sorted(dax_column_refs(m.dax)) if c not in columns.get(t, {})]
+        problems += [f"{label}: {w} no es una tabla" for w in sorted(set(re.findall(r"\b(?:dim|fact)_\w+", m.dax)) - set(columns))]
+        problems += [f"{label}: la función {f} no es de las que usa el plan" for f in sorted(set(_FUNCTION_CALL.findall(m.dax)) - DAX_FUNCTIONS)]
+        uses[m.name_es] = dax_measure_refs(m.dax)
+        problems += [f"{label}: la medida [{r}] no existe o es ella misma" for r in sorted(uses[m.name_es]) if r not in names or r == m.name_es]
+        for table, column, literal in _LITERAL_COMPARISON.findall(m.dax):
+            if column in columns.get(table, {}) and literal not in columns[table][column].description_es:
+                problems.append(f"{label}: compara {table}[{column}] con '{literal}', que la columna no toma")
+        problems += [f"{label}: {w} quita los filtros de los segmentadores" for w in sorted(set(_REMOVES_FILTERS.findall(m.dax)))]
+        if not m.format_string or not m.description_es:
+            problems.append(f"{label}: necesita un formato y una descripción")
+
+    def circle(name: str, path: tuple[str, ...]) -> bool:
+        return name in path or any(circle(n, (*path, name)) for n in uses.get(name, ()) if n in uses and n != name)
+
+    problems += [f"las medidas [{n}] se llaman en círculo" for n in sorted(uses) if any(circle(r, (n,)) for r in uses[n] if r in uses and r != n)]
+    return problems
+
+
+def _page_problems(model: SemanticModel) -> list[str]:
+    problems: list[str] = []
+    titles = [p.name_es for p in model.pages]
+    problems += [f"página repetida: {t}" for t in sorted({t for t in titles if titles.count(t) > 1})]
+    related = {(r.dim_table, r.fact_table) for r in model.relationships}
+    kinds = {t.name: t.kind for t in model.tables}
+    for page in model.pages:
+        if not page.visuals:
+            problems.append(f"{page.name_es}: sin visuales")
+        taken: dict[tuple[int, int], str] = {}
+        for v in page.visuals:
+            label = f"{page.name_es}: {v.title_es}"
+            problems += [f"{label}: {why}" for field in v.fields if (why := _field_problem(model, field)) is not None]
+            if v.kind == "slicer" and (len(v.fields) != 1 or v.fields[0].startswith("[")):
+                problems.append(f"{label}: un segmentador usa una sola columna")
+            tables = visual_tables(model, v)
+            dims, facts = sorted(t for t in tables if kinds[t] == "dimension"), sorted(t for t in tables if kinds[t] == "fact")
+            if len(facts) >= 2 and not dims:
+                problems.append(f"{label}: dos hechos sin una dimensión que los una")
+            if len(dims) >= 2 and not facts:
+                problems.append(f"{label}: dos dimensiones sin un hecho que las una")
+            problems += [f"{label}: {d} y {f} no se unen por ninguna relación" for d in dims for f in facts if (d, f) not in related]
+            if v.w < 1 or v.h < 1 or v.x < 0 or v.y < 0 or v.x + v.w > PAGE_COLUMNS or v.y + v.h > PAGE_ROWS:
+                problems.append(f"{label}: sale de la grilla de {PAGE_COLUMNS} x {PAGE_ROWS}")
+                continue
+            cells = [(cx, cy) for cx in range(v.x, v.x + v.w) for cy in range(v.y, v.y + v.h)]
+            clash = next((taken[c] for c in cells if c in taken), None)
+            if clash is not None:
+                problems.append(f"{label}: se superpone con {clash}")
+            taken.update({c: v.title_es for c in cells})
+    return problems
+
+
 def validate_model(model: SemanticModel) -> list[str]:
     """What is incoherent in `model` (empty when nothing is): unique table names, known types, keys among the columns, relationships between a dimension's whole key
-    and a fact's column of the same type, one to many, single direction and active."""
+    and a fact's column of the same type, one to many, single direction and active; then the measures (``_measure_problems``) and the pages (``_page_problems``)."""
     problems: list[str] = []
     names = [t.name for t in model.tables]
     if len(set(names)) != len(names):
@@ -239,4 +497,4 @@ def validate_model(model: SemanticModel) -> list[str]:
             problems.append(f"{r.rel_id}: {r.fact_table}[{r.fact_column}] no es una columna del tipo de {r.dim_table}[{r.dim_column}]")
         if (r.cardinality, r.cross_filter, r.active) != ("one_to_many", "single", True):
             problems.append(f"{r.rel_id} no es uno a varios, de filtro unidireccional y activa")
-    return problems
+    return problems + _measure_problems(model) + _page_problems(model)

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import html as html_lib
+import re
+
 import pytest
 
 from flotsilica.texts import CRITERIA, METHODS_ES, es, threshold_of
@@ -64,3 +67,19 @@ def test_no_generated_text_calls_a_sensitivity_a_cause_or_an_action():
     far = "La causa del cambio de nivel entre los bloques no se conoce, y no hay acción que lo corrija." + " " * 150 + "El sensor amina_flow: sin asociación estable."
     assert texts.sensitivity_problems(far) == [] and texts.sensitivity_problems("La causa de la diferencia de nivel es el calendario, no un sensor.") != []
     assert texts.sensitivity_problems("Acción: subir el amina_flow.") and texts.sensitivity_problems("Las ACCIONES sobre starch_flow") and texts.sensitivity_problems("provoca amina_flow")
+
+
+def test_the_design_of_the_report_never_calls_a_sensitivity_a_cause_or_an_action(rendered_html):
+    """U14: the HTML joins the texts that the check of D20 reads (plan, section 14): every text node and every label of the design, one by one, with the word of a cause or an action near the
+    name of a sensor, «sensor», «sensibilidad» or «dependencia parcial» as the only thing that fails."""
+    from flotsilica import texts
+
+    html = rendered_html.html
+    found = [html_lib.unescape(node).strip() for node in re.split(r"<[^>]+>", html)] + [html_lib.unescape(m) for m in re.findall(r'aria-label="([^"]*)"', html)]
+    found = [t for t in found if t]
+    assert len(found) > 300 and any("Una sensibilidad es una asociación del modelo, no una receta" in t for t in found) and any("sin asociación estable" in t for t in found)
+    assert any("Asociación del modelo, no una receta" in t for t in found)
+    for text in found:
+        assert texts.sensitivity_problems(text) == [], text
+    # the check reads the design: a title that said it would be found
+    assert texts.sensitivity_problems("Asociación del modelo, no una causa: dependencia parcial")
