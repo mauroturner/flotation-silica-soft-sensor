@@ -13,6 +13,7 @@ import types
 from collections.abc import Callable
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from tests.fixtures.suite_budget import pytest_addoption, pytest_sessionfinish, pytest_sessionstart  # noqa: F401  (the time limit, D33)
@@ -198,3 +199,33 @@ def loaded_masters(tmp_path_factory: pytest.TempPathFactory, published, quick_cf
         return built[upto]
 
     return build
+
+
+@pytest.fixture(scope="session")
+def small_canonical(small_arff: Path, quick_cfg):
+    """The small fixture (three weeks, 186 hours, the March gap inside) read once into its canonical tables, like ``canonical``."""
+    from flotsilica.ingest import canonical as build
+    from flotsilica.ingest import read_arff
+
+    read, report = read_arff(small_arff, quick_cfg)
+    rows, hours = build(read, quick_cfg)
+    return types.SimpleNamespace(read=read, report=report, rows=rows, hours=hours)
+
+
+@pytest.fixture(scope="session")
+def small_store(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg) -> Path:
+    """A warehouse that holds the whole small fixture as one delivery (the features read ``lab_hours`` and ``hour_aggregates``): built once;
+    a test that writes opens ``sqlite3`` on a copy of it (``Connection.backup``) or on ``copy_of(path)``."""
+    from flotsilica.deliveries import DeliverySpec
+    from flotsilica.warehouse import connect, load_delivery
+
+    hours = small_canonical.hours
+    spec = DeliverySpec("L-small", "launch", hours["hour"].iloc[0].to_pydatetime(), hours["hour"].iloc[-1].to_pydatetime(),
+                        (hours["hour"].iloc[-1] + pd.Timedelta(hours=1)).to_pydatetime())
+    path = tmp_path_factory.mktemp("small_store") / "small.sqlite"
+    conn = connect(path)
+    try:
+        load_delivery(conn, small_canonical.rows, hours, spec, "r1", quick_cfg, sha256="f" * 64)
+    finally:
+        conn.close()
+    return path
