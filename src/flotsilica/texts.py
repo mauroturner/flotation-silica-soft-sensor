@@ -89,14 +89,56 @@ def bias_verdict(passed: bool, bias: float | None, max_bias: float) -> str:
             f"y se pedía a lo sumo {es(max_bias, 2)}.")
 
 
+ASSOCIATION_ES = "asociación del modelo"
+NO_ASSOCIATION_ES = "sin asociación estable"
+# what no text about a sensitivity may say (D20): that a sensor is the cause of the silica or what someone should do with the air or the reagents
+FORBIDDEN_ES = ("causa", "provoca", "controla", "ajustar el", "subir el", "bajar el", "acción", "acciones")
+NEAR_CHARACTERS = 70
+
+
+def sensor_line(sensor: str, *, passes: bool, sign: int, kept: bool | None) -> str:
+    """The sentence about one sensor: a stable association of the model (with its direction and, after the test, whether it keeps it) or no stable association."""
+    if not passes:
+        return f"{sensor}: {NO_ASSOCIATION_ES}."
+    tail = {True: " y conserva el signo en la prueba", False: " pero no conserva el signo en la prueba", None: ""}[kept]
+    return f"{sensor}: {ASSOCIATION_ES}; la estimación {'sube' if sign > 0 else 'baja'} cuando el valor del sensor sube{tail}."
+
+
+def gate_summary(passing: list[str], computed: bool) -> str:
+    """What the gate of the launch found, in one sentence."""
+    if not computed:
+        return "La compuerta de sensibilidades no se calculó."
+    if not passing:
+        return f"Ningún sensor pasa la compuerta de estabilidad: {NO_ASSOCIATION_ES}. Las sensibilidades son {ASSOCIATION_ES}, no una receta."
+    return f"Pasan la compuerta de estabilidad como {ASSOCIATION_ES}: {', '.join(passing)}."
+
+
 def stability_verdict(passed: bool, passing: list[str], kept: list[str], computed: bool) -> str:
     if not computed:
         return "No se puede calcular: la compuerta de sensibilidades no se calculó en el lanzamiento."
     if not passing:
-        return "Ningún sensor pasa la compuerta de estabilidad: sin asociación estable."
+        return f"Ningún sensor pasa la compuerta de estabilidad: {NO_ASSOCIATION_ES}."
     if passed:
         return f"{len(kept)} de {len(passing)} sensores que pasan la compuerta conservan el signo de su dependencia parcial en la prueba: {', '.join(kept)}."
     return f"{len(passing)} sensores pasan la compuerta, pero ninguno conserva el signo de su dependencia parcial en la prueba."
+
+
+def sensitivity_problems(text: str) -> list[str]:
+    """What is wrong in `text` if it is about a sensor or a sensitivity: each forbidden word (``FORBIDDEN_ES``) that is within ``NEAR_CHARACTERS`` of the name of a sensor or
+    of the words «sensor», «sensibilidad» or «dependencia parcial». A text that has none of those near is not about a sensitivity, and is not judged."""
+    import re
+
+    from flotsilica.schema import SENSORS
+
+    lowered, problems = text.lower(), []
+    anchors = [(m.start(), m.group()) for pattern in (*(re.escape(sensor) for sensor in SENSORS), r"sensor\w*", r"sensibilidad\w*", r"dependencia parcial")
+               for m in re.finditer(pattern, lowered)]
+    for word in FORBIDDEN_ES:
+        for found in re.finditer(r"\b" + re.escape(word), lowered):
+            near = [name for position, name in anchors if abs(position - found.start()) <= NEAR_CHARACTERS]
+            if near:
+                problems.append(f"«{word}» cerca de «{near[0]}»")
+    return problems
 
 
 def informative_verdict(hours: int) -> str:

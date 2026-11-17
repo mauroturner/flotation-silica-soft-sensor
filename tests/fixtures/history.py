@@ -41,12 +41,12 @@ PLAN_A = (
 PLAN_B = (PLAN_A[0], spec("D-b1", "daily", datetime(2017, 3, 30, 0), datetime(2017, 3, 31, 0)))
 
 
-def build_history(folder: Path, canonical, quick_cfg, plan=PLAN_A, **model) -> types.SimpleNamespace:
+def build_history(folder: Path, canonical, quick_cfg, plan=PLAN_A, *, gate=None, **model) -> types.SimpleNamespace:
     """Load `plan` into ``folder/warehouse.sqlite`` run by run (``r1``, ``r2``...), fit the model at the launch and issue each run's estimates."""
     view = small_view(quick_cfg, **model)
     sealed = sealed_view(view, SOURCE_SHA256)
     paths = types.SimpleNamespace(db=folder / "warehouse.sqlite", seal=folder / "reports" / "model_seal.json", models=folder / "models")
-    history = types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=[], fits=[], results=[], evals=[], plan=())
+    history = types.SimpleNamespace(paths=paths, view=view, sealed=sealed, runs=[], fits=[], results=[], evals=[], plan=(), gate=gate)
     return _continue(history, canonical, plan)
 
 
@@ -65,7 +65,7 @@ def _continue(history, canonical, plan) -> types.SimpleNamespace:
             hours = canonical.hours[(canonical.hours["hour"] >= delivery.first_hour) & (canonical.hours["hour"] <= delivery.last_hour)]
             run = RunMeta(f"r{len(history.runs) + 1}", delivery.delivery_id, delivery.kind, delivery.as_of, previous)
             load_delivery(conn, rows, hours, delivery, run.run_key, history.view, sha256="f" * 64)
-            history.fits.append(fit_model(conn, run, sealed, models_dir=paths.models, seal_path=paths.seal))
+            history.fits.append(fit_model(conn, run, sealed, models_dir=paths.models, seal_path=paths.seal, gate=history.gate))
             history.results.append(score_run(conn, run, load_registered_bundle(conn, paths.models, sealed.model.model_version), sealed))
             history.evals.append(evaluate(conn, run, sealed, seal_path=paths.seal, models_dir=paths.models))
             history.runs.append(run)

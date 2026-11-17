@@ -267,3 +267,72 @@ BEGIN SELECT RAISE(ABORT, 'eval_leakage: una fila sellada es de solo inserción:
 CREATE TRIGGER IF NOT EXISTS eval_leakage_sealed_no_second_insert BEFORE INSERT ON eval_leakage
 WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_leakage WHERE seal_state = 'sealed' AND check_id = NEW.check_id)
 BEGIN SELECT RAISE(ABORT, 'eval_leakage: una fila sellada es de solo inserción: ya está escrita'); END;
+
+-- The sensitivities (D20; RF20): every sensor with its importances in V1 and V2, the range of the Spearman correlations of its partial dependence and whether it passes the gate of the
+-- launch (``eval_sensitivity``); whether each sensor that passed keeps its sign over the hours of the test (``eval_sensitivity_test``, C09); and the curves of the sensors that passed.
+-- All of them are associations of the model, with the same rule for the sealed rows as the tables above.
+
+CREATE TABLE IF NOT EXISTS eval_sensitivity (
+    sensor TEXT NOT NULL,
+    importance_v1 REAL NOT NULL,
+    importance_v2 REAL NOT NULL,
+    rho_min REAL,
+    rho_max REAL,
+    sign_stable INTEGER NOT NULL CHECK (sign_stable IN (0, 1)),
+    passes INTEGER NOT NULL CHECK (passes IN (0, 1)),
+    sign INTEGER NOT NULL CHECK (sign IN (-1, 0, 1)),
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (sensor, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_sensitivity_test (
+    sensor TEXT NOT NULL,
+    sealed_sign INTEGER NOT NULL CHECK (sealed_sign IN (-1, 1)),
+    rho_test REAL NOT NULL,
+    kept_sign INTEGER NOT NULL CHECK (kept_sign IN (0, 1)),
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (sensor, seal_state)
+);
+
+CREATE TABLE IF NOT EXISTS eval_pd_curve (
+    sensor TEXT NOT NULL,
+    scope TEXT NOT NULL CHECK (scope IN ('launch', 'test')),
+    point INTEGER NOT NULL,
+    value REAL NOT NULL,
+    estimate REAL NOT NULL,
+    seal_state TEXT NOT NULL CHECK (seal_state IN ('sealed', 'post_seal')),
+    run_key TEXT NOT NULL,
+    PRIMARY KEY (sensor, scope, point, seal_state)
+);
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_sealed_no_update BEFORE UPDATE ON eval_sensitivity WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_sealed_no_delete BEFORE DELETE ON eval_sensitivity WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_sealed_no_second_insert BEFORE INSERT ON eval_sensitivity
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_sensitivity WHERE seal_state = 'sealed' AND sensor = NEW.sensor)
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_test_sealed_no_update BEFORE UPDATE ON eval_sensitivity_test WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity_test: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_test_sealed_no_delete BEFORE DELETE ON eval_sensitivity_test WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity_test: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_sensitivity_test_sealed_no_second_insert BEFORE INSERT ON eval_sensitivity_test
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_sensitivity_test WHERE seal_state = 'sealed' AND sensor = NEW.sensor)
+BEGIN SELECT RAISE(ABORT, 'eval_sensitivity_test: una fila sellada es de solo inserción: ya está escrita'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_pd_curve_sealed_no_update BEFORE UPDATE ON eval_pd_curve WHEN OLD.seal_state = 'sealed' OR NEW.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_pd_curve: una fila sellada es de solo inserción: no se cambia'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_pd_curve_sealed_no_delete BEFORE DELETE ON eval_pd_curve WHEN OLD.seal_state = 'sealed'
+BEGIN SELECT RAISE(ABORT, 'eval_pd_curve: una fila sellada es de solo inserción: no se borra'); END;
+
+CREATE TRIGGER IF NOT EXISTS eval_pd_curve_sealed_no_second_insert BEFORE INSERT ON eval_pd_curve
+WHEN NEW.seal_state = 'sealed' AND EXISTS (SELECT 1 FROM eval_pd_curve WHERE seal_state = 'sealed' AND sensor = NEW.sensor AND scope = NEW.scope AND point = NEW.point)
+BEGIN SELECT RAISE(ABORT, 'eval_pd_curve: una fila sellada es de solo inserción: ya está escrita'); END;

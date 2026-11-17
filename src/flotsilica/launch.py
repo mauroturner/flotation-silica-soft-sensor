@@ -9,8 +9,8 @@ section 3, step 5). Its hours come from the warehouse as it stood at the launch 
 * In **every other run**: nothing is fitted. The bundle is loaded from the registry only if the artifact has the registered SHA-256 (M03) and the state of the
   seal is read (M05).
 
-``fit_model`` takes the warehouse, the run and the paths instead of the pipeline's context (U17 wraps it in the task); the gate of the sensitivities (U12) is
-a function the caller passes: until then the seal says it was not computed. The launch also stores what the evaluation shows before the test (the selection, the
+``fit_model`` takes the warehouse, the run and the paths instead of the pipeline's context (U17 wraps it in the task); the gate of the sensitivities
+(``sensitivity.launch_gate``, D20) is computed at the launch and sealed with it: a function the caller may pass instead is for a test that needs another gate. The launch also stores what the evaluation shows before the test (the selection, the
 baselines, V1 and V2 and the leak demonstration) with the state of the seal (``evalstore.store_launch``).
 """
 
@@ -45,11 +45,11 @@ from flotsilica.registry import (
     write_launch_seal,
 )
 from flotsilica.scoring import RunMeta
+from flotsilica.sensitivity import launch_gate
 from flotsilica.warehouse import rebuild_staging
 
 logger = logging.getLogger(__name__)
 
-NOT_COMPUTED_GATE = {"computed": False, "model": None, "passing": []}      # until U12 puts the gate of the sensitivities in the launch
 GateFn = Callable[[LaunchFit, Any], dict[str, Any]]
 
 
@@ -121,13 +121,15 @@ def fit_model(conn: sqlite3.Connection, run: RunMeta, view: Any, *, models_dir: 
     elif sha256_file(artifact) != digest:
         raise ArtifactError(f"el artefacto {artifact.name} ya existe con otra huella: una versión registrada tiene un solo artefacto; cambie "
                             "[model] model_version para otro modelo (docs/runbook.md, R9)")
-    document = launch_document(run, view, launch, digest, (gate or (lambda *_: NOT_COMPUTED_GATE))(launch, view))
+    gate_document = (gate or launch_gate)(launch, view)
+    document = launch_document(run, view, launch, digest, {k: v for k, v in gate_document.items() if k != "curves"})
     if read_registry(conn, version) is None:
         register_model(conn, model_version=version, trained_as_of=document["as_of"], artifact_name=artifact.name, artifact_sha256=digest,
                        config_sha256=config_sha256, models=document["horizons"], selection=_selection(launch),
                        valid_predictions_sha256=document["valid_predictions_sha256"])
     state = write_launch_seal(seal_path, document)
-    stored = store_launch(conn, tables, launch, frame.set_index("hour")["iron_conc_pct"], view, "sealed" if state in ("written", "unchanged") else "post_seal", run.run_key)
+    stored = store_launch(conn, tables, launch, frame.set_index("hour")["iron_conc_pct"], view, "sealed" if state in ("written", "unchanged") else "post_seal", run.run_key,
+                         gate_document)
     logger.info("fit_model %s: version %s, artifact %s, seal %s", run.run_key, version, digest[:12], state)
     return {"mode": "launch", "seal": state, "stored": stored, "model_version": version, "artifact_sha256": digest, "config_sha256": config_sha256,
             "horizons": [h["horizon"] for h in document["horizons"]], "valid_predictions_sha256": document["valid_predictions_sha256"]}

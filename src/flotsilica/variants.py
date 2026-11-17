@@ -22,13 +22,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from flotsilica.baselines import eligible
-from flotsilica.evaluation import day_bootstrap
-from flotsilica.features import HourTables, design
+from flotsilica.evaluation import day_bootstrap, holdout_cohort
+from flotsilica.features import HourTables
 from flotsilica.launch import hour_frame
 from flotsilica.model import LAUNCH_BLOCKS, build_blocks, fit_candidate, refit_blocks, stack
 from flotsilica.registry import ModelBundle, SealError, read_seal
-from flotsilica.split import block_of
 
 PERSISTENCE = "b1_persistence"
 
@@ -48,21 +46,13 @@ def _comparison(variant: str, horizon: int, hours: pd.DatetimeIndex, y: np.ndarr
     return out
 
 
-def _test_cohort(tables: HourTables, view: Any, horizon: int) -> tuple[pd.DatetimeIndex, pd.DataFrame, np.ndarray]:
-    """The hours of the test with a fresh analysis and every input at `horizon`, their features and their analyses."""
-    inside = tables.hours[(block_of(tables.hours, view) == "test").to_numpy()]
-    hours = inside[eligible(tables, inside, horizon, view).to_numpy()]
-    y, _fresh = tables.analysis_of(hours)
-    return hours, design(tables, hours, horizon, view), y
-
-
 def _latency(frame: pd.DataFrame, bundle: ModelBundle, view: Any, latency: int) -> list[dict[str, Any]]:
     variant = f"latency_{latency}"
     view_l = dataclasses.replace(view, lab=dataclasses.replace(view.lab, latency_hours=latency))
     tables = HourTables.from_hours(frame.drop(columns=["available_at"]), view_l)          # the arrival is the hour plus the latency of the variant
     candidate = bundle.horizons[0].candidate
     model = refit_blocks(candidate, build_blocks(tables, view_l, (0,))[0], view_l)
-    hours, x, y = _test_cohort(tables, view_l, 0)
+    hours, x, y = holdout_cohort(tables, view_l, 0)
     if not len(hours):
         return []
     last1 = x["lab_last1"].to_numpy(dtype="float64")
@@ -76,7 +66,7 @@ def _refit_all(frame: pd.DataFrame, bundle: ModelBundle, view: Any) -> list[dict
     for hm in bundle.horizons:
         x_fit, y_fit, last_fit = stack(blocks[hm.horizon], LAUNCH_BLOCKS)
         fitted = fit_candidate(hm.candidate, x_fit, y_fit, last_fit, view, fitted_on=LAUNCH_BLOCKS)
-        hours, x, y = _test_cohort(tables, view, hm.horizon)
+        hours, x, y = holdout_cohort(tables, view, hm.horizon)
         if len(hours):
             last1 = x["lab_last1"].to_numpy(dtype="float64")
             out += _comparison("refit_all", hm.horizon, hours, y, fitted.predict(x, last1), last1, view)

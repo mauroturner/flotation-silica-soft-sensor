@@ -23,6 +23,9 @@ import numpy as np
 import pandas as pd
 
 from flotsilica import texts
+from flotsilica.baselines import eligible
+from flotsilica.features import HourTables, design
+from flotsilica.split import block_of
 from flotsilica.texts import CRITERIA, es
 
 PERCENTILES = (2.5, 97.5)
@@ -177,6 +180,15 @@ def evaluate_frames(frames: Mapping[int, pd.DataFrame], view: Any) -> Evaluation
                     weekly.append({"week": (test_first + week * WEEK).strftime("%Y-%m-%d"), "horizon": horizon, "method": m,
                                    "mae": float(np.mean(np.abs(frame[m].to_numpy(dtype="float64")[mask] - actual[mask]))), "hours": int(mask.sum())})
     return EvaluationResult(hours, metrics_by, bootstraps, weekly)
+
+
+def holdout_cohort(tables: HourTables, view: Any, horizon: int) -> tuple[pd.DatetimeIndex, pd.DataFrame, np.ndarray]:
+    """The hours of the test with a fresh analysis and every input at `horizon`, their features at their issue instant and their analyses: the variants and the sign check
+    of the sensitivities read the test through this, after the launch is sealed."""
+    inside = tables.hours[(block_of(tables.hours, view) == "test").to_numpy()]
+    hours = inside[eligible(tables, inside, horizon, view).to_numpy()]
+    y, _fresh = tables.analysis_of(hours)
+    return hours, design(tables, hours, horizon, view), y
 
 
 def evaluate_test(conn: sqlite3.Connection, view: Any) -> EvaluationResult:

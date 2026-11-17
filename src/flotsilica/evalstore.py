@@ -90,8 +90,10 @@ def validation_figures(tables: HourTables, launch: LaunchFit, view: Any) -> list
     return out
 
 
-def store_launch(conn: sqlite3.Connection, tables: HourTables, launch: LaunchFit, iron: pd.Series, view: Any, state: str, run_key: str) -> dict[str, bool]:
-    """Store the tables of the launch with `state`: the 28 errors of V1 of each horizon (D14), the baselines, the figures of V1 and V2 and the leak demonstration."""
+def store_launch(conn: sqlite3.Connection, tables: HourTables, launch: LaunchFit, iron: pd.Series, view: Any, state: str, run_key: str,
+                 gate: Mapping[str, Any] | None = None) -> dict[str, bool]:
+    """Store the tables of the launch with `state`: the 28 errors of V1 of each horizon (D14), the baselines, the figures of V1 and V2, the leak demonstration and, if the gate
+    of the sensitivities was computed, every sensor with its importances and its correlations and the curves of the sensors that passed."""
     selection, baselines = [], []
     for horizon, fit in launch.horizons.items():
         selection += [(horizon, r.candidate.name, r.candidate.family, r.candidate.feature_set, r.candidate.target, r.candidate.min_samples_leaf, r.mae_v1,
@@ -104,6 +106,8 @@ def store_launch(conn: sqlite3.Connection, tables: HourTables, launch: LaunchFit
     zero = launch.horizons.get(0)
     leak = (leakage_table(launch.blocks[0], iron, zero.chosen, view) if zero is not None else pd.DataFrame())
     figures = validation_figures(tables, launch, view)
+    sensors = [(e["sensor"], e["importance_v1"], e["importance_v2"], e["rho_min"], e["rho_max"], e["sign_stable"], e["passes"], e["sign"]) for e in (gate or {}).get("sensors", [])]
+    curves = [(sensor, "launch", point, p["value"], p["estimate"]) for sensor, curve in (gate or {}).get("curves", {}).items() for point, p in enumerate(curve)]
     conn.execute("BEGIN IMMEDIATE")
     try:
         written = {
@@ -115,6 +119,8 @@ def store_launch(conn: sqlite3.Connection, tables: HourTables, launch: LaunchFit
             "leakage": store_group(conn, "eval_leakage", ("check_id", "description_es", "mae", "r2", "rows", "note_es"),
                                    [tuple(r) for r in leak[["check_id", "description_es", "mae", "r2", "rows", "note_es"]].itertuples(index=False)] if len(leak) else [],
                                    state, run_key),
+            "sensitivity": store_group(conn, "eval_sensitivity", ("sensor", "importance_v1", "importance_v2", "rho_min", "rho_max", "sign_stable", "passes", "sign"), sensors, state, run_key),
+            "curves": store_group(conn, "eval_pd_curve", ("sensor", "scope", "point", "value", "estimate"), curves, state, run_key, where="scope = 'launch'"),
         }
         conn.execute("COMMIT")
     except BaseException:
@@ -127,7 +133,8 @@ def store_launch(conn: sqlite3.Connection, tables: HourTables, launch: LaunchFit
 # --- the test ---------------------------------------------------------------------------------------------------------------------
 
 
-def store_result(conn: sqlite3.Connection, result: EvaluationResult, criteria: Sequence[Criterion], variants: Sequence[Mapping[str, Any]], state: str, run_key: str) -> bool:
+def store_result(conn: sqlite3.Connection, result: EvaluationResult, criteria: Sequence[Criterion], variants: Sequence[Mapping[str, Any]], state: str, run_key: str,
+                 checks: Sequence[Mapping[str, Any]] = (), curves: Mapping[str, Sequence[Mapping[str, float]]] | None = None) -> bool:
     """Store the evaluation of the test with `state`: its figures, the intervals, the weeks, the criteria and the variants. All or nothing; a sealed group already
     there is left alone, so the criteria of the one evaluation are written once. Returns whether the criteria were written."""
     metric_rows = [("test", h, method, metric, getattr(m, metric)) for h, per in result.metrics.items() for method, m in per.items()
@@ -137,6 +144,8 @@ def store_result(conn: sqlite3.Connection, result: EvaluationResult, criteria: S
     criteria_rows = [(c.criterion_id, c.name_es, c.value, c.baseline_value, c.ci_low, c.ci_high, c.threshold_es, c.passed, c.seen_by_research, c.seen_by_planner,
                       c.verdict_es) for c in criteria]
     variant_rows = [(v["variant"], v["horizon"], v["method"], v["metric"], v["value"]) for v in variants]
+    check_rows = [(c["sensor"], c["sealed_sign"], c["rho_test"], c["kept_sign"]) for c in checks]
+    curve_rows = [(sensor, "test", point, p["value"], p["estimate"]) for sensor, curve in (curves or {}).items() for point, p in enumerate(curve)]
     conn.execute("BEGIN IMMEDIATE")
     try:
         written = store_group(conn, "eval_criteria", ("criterion_id", "name_es", "value", "baseline_value", "ci_low", "ci_high", "threshold_es", "passed",
@@ -145,6 +154,8 @@ def store_result(conn: sqlite3.Connection, result: EvaluationResult, criteria: S
         store_group(conn, "eval_bootstrap", ("comparison", "horizon", "difference", "ci_low", "ci_high", "resamples"), boot_rows, state, run_key)
         store_group(conn, "eval_weekly", ("week", "horizon", "method", "mae", "hours"), weekly_rows, state, run_key)
         store_group(conn, "eval_variants", ("variant", "horizon", "method", "metric", "value"), variant_rows, state, run_key)
+        store_group(conn, "eval_sensitivity_test", ("sensor", "sealed_sign", "rho_test", "kept_sign"), check_rows, state, run_key)
+        store_group(conn, "eval_pd_curve", ("sensor", "scope", "point", "value", "estimate"), curve_rows, state, run_key, where="scope = 'test'")
         conn.execute("COMMIT")
     except BaseException:
         if conn.in_transaction:

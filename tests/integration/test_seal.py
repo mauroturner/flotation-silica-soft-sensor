@@ -86,7 +86,7 @@ def test_another_config_after_the_seal_is_post_seal_and_the_seal_stays(small_lau
     assert result["seal"] == "post_seal" and h.paths.seal.read_bytes() == then
     # the tables of the other launch are post-seal rows next to the sealed ones, which are as they were
     stored = {state: rows_of(h.paths.db, "SELECT COUNT(*) FROM eval_selection WHERE seal_state = ?", state) for state in ("sealed", "post_seal")}
-    assert stored == {"sealed": 15, "post_seal": 15} and result["stored"] == {"selection": True, "baselines": True, "validation": True, "leakage": True}
+    assert stored == {"sealed": 15, "post_seal": 15} and set(result["stored"]) == {"selection", "baselines", "validation", "leakage", "sensitivity", "curves"} and all(result["stored"].values())
     assert (h.paths.models / "v1.pkl").read_bytes() == artifact and (h.paths.models / "v2.pkl").exists()
     # the same version with another model never takes the file of the registered one
     conn = connect(h.paths.db)

@@ -56,8 +56,13 @@ def test_the_test_is_evaluated_once_from_what_was_issued_and_written_to_the_seal
     assert (c01["value"], c01["baseline_value"]) == (figures["mae"], seal["metrics"]["horizons"]["0"]["methods"]["b1_persistence"]["mae"])
     assert c01["passed"] == (c01["value"] < c01["baseline_value"]) and [e["id"] for e in seal["criteria"]] == [f"C{i:02d}" for i in range(1, 11)]
     assert {(w["horizon"], w["method"]) for w in seal["weekly"]} == {(h_, m) for h_ in (0, 1, 2) for m in ("model", "b1_persistence", "b_star")} and {w["week"] for w in seal["weekly"]} == {"2017-03-30"}
-    assert seal["metrics"]["sensitivity"] == {"computed": False, "passing": [], "kept_sign": []} and seal["sensitivity_test"] == []
-    assert next(e for e in seal["criteria"] if e["id"] == "C09")["verdict_es"].startswith("No se puede calcular")
+    gate = read_seal(h.paths.seal)["launch"]["gate"]
+    sensitivity = seal["metrics"]["sensitivity"]
+    assert gate["computed"] is True and sensitivity["computed"] is True and sensitivity["passing"] == gate["passing"]
+    assert [c["sensor"] for c in seal["sensitivity_test"]] == gate["passing"] and set(sensitivity["kept_sign"]) == {c["sensor"] for c in seal["sensitivity_test"] if c["kept_sign"]}
+    c09 = next(e for e in seal["criteria"] if e["id"] == "C09")
+    assert (c09["value"], c09["baseline_value"], c09["passed"]) == (float(len(sensitivity["kept_sign"])), float(len(gate["passing"])), len(sensitivity["kept_sign"]) > 0)
+    assert rows(h.paths.db, "SELECT COUNT(*) FROM eval_sensitivity WHERE seal_state = 'sealed'")[0][0] == 19 and rows(h.paths.db, "SELECT COUNT(*) FROM eval_sensitivity_test")[0][0] == len(gate["passing"])
 
 
 def test_a_repetition_reproduces_the_seal_and_the_sealed_rows_are_never_written_again(small_history, tmp_path):

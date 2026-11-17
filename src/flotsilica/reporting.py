@@ -25,7 +25,9 @@ import pandas as pd
 from flotsilica import texts, variants
 from flotsilica.evalstore import store_result
 from flotsilica.evaluation import Criterion, criteria_from_seal, evaluate_criteria, evaluate_test, figures
+from flotsilica.features import HourTables
 from flotsilica.files import write_atomic
+from flotsilica.launch import hour_frame
 from flotsilica.registry import (
     SealError,
     check_test_evaluation,
@@ -36,6 +38,7 @@ from flotsilica.registry import (
     write_test_seal,
 )
 from flotsilica.scoring import RunMeta
+from flotsilica.sensitivity import COMPARISON, sign_check
 from flotsilica.texts import CRITERIA, METHODS_ES, es
 from flotsilica.warehouse import apply_schema
 
@@ -65,8 +68,8 @@ def _has_sealed_criteria(conn: sqlite3.Connection) -> bool:
 
 def evaluate(conn: sqlite3.Connection, run: RunMeta, view: Any, *, seal_path: Path, models_dir: Path, sensitivity: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Evaluate what the run's ``as_of`` allows (see the module). Returns what the run records (JSON-ready): ``test`` is ``pending``, ``sealed_before``, ``written``,
-    ``unchanged`` (a repetition that reproduces the seal) or ``post_seal``. `sensitivity` is what C09 reads (``evaluation.figures``): until the gate of the launch gives
-    its result (U12) the criterion says it cannot be computed."""
+    ``unchanged`` (a repetition that reproduces the seal) or ``post_seal``. `sensitivity` is what C09 reads (``evaluation.figures``); if it is not given it comes from the gate of the sealed launch and the
+    sign check over the hours of the test (``sensitivity.sign_check``), and C09 says it cannot be computed only if the gate was not."""
     apply_schema(conn)
     config_sha256 = config_fingerprint(view)
     state = seal_state(seal_path, config_sha256)
@@ -84,11 +87,17 @@ def evaluate(conn: sqlite3.Connection, run: RunMeta, view: Any, *, seal_path: Pa
     result = evaluate_test(conn, view)
     bundle = load_registered_bundle(conn, models_dir, view.model.model_version)       # M03
     found = variants.run(conn, bundle, view, as_of=run.as_of, seal_path=seal_path)
+    checks, curves = [], {}
+    gate = read_seal(seal_path)["launch"].get("gate") or {}
+    if sensitivity is None and gate.get("computed"):
+        # C09: the sensors that passed the sealed gate, and whether each keeps its sign over the hours of the test (after the launch part of the seal is written)
+        checks, curves = sign_check(HourTables.from_hours(hour_frame(conn, run.as_of, view), view), bundle.comparisons[0][COMPARISON], view, gate)
+        sensitivity = {"computed": True, "passing": list(gate["passing"]), "kept_sign": [c["sensor"] for c in checks if c["kept_sign"]]}
     criteria = evaluate_criteria(result, view, sensitivity)
     part = {"run_key": run.run_key, "as_of": pd.Timestamp(run.as_of).strftime(STAMP), "config_sha256": config_sha256, "criteria": [c.seal_entry() for c in criteria],
-            "metrics": figures(result, sensitivity), "weekly": result.weekly, "variants": found, "sensitivity_test": []}
+            "metrics": figures(result, sensitivity), "weekly": result.weekly, "variants": found, "sensitivity_test": checks}
     outcome = write_test_seal(seal_path, part) if mode in ("first", "repeat") else "post_seal"
-    store_result(conn, result, criteria, found, rows_state, run.run_key)
+    store_result(conn, result, criteria, found, rows_state, run.run_key, checks, curves)
     out.update(test=outcome, criteria={c.criterion_id: c.passed for c in criteria})
     logger.info("evaluate %s: test %s (%s), criteria met %s", run.run_key, outcome, rows_state, [c.criterion_id for c in criteria if c.passed])
     return out
