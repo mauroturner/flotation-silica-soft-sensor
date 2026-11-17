@@ -265,7 +265,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: un conjunto mezclado tras una falla es la advertencia de U20 del proyecto 03; el manifiesto escrito al final la evita.
 - **Afecta**: `site_export.py`; RF23; AC27; marca-personal.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U15 (2026-11-17): `export_site(conn, out_dir, run, view, *, seal_path, max_total_bytes)` toma la corrida y la vista sellada como `export_star_schema` (el tope de `[site]` lo pasa quien llama); lo que ve la prueba sale del resumen y del sello de la misma corrida y, antes del sello, va `null` o vacío aunque las horas de la prueba ya tengan estimación; el manifiesto se borra antes del primer archivo y se escribe al final, así que un corte a mitad deja un conjunto sin manifiesto que `verify_site` nombra y `read_site` rechaza, y `verify_site` pide además el mismo envoltorio en los cinco. El contrato suma `pending` en `states_by_block` y `gate` en `algorithms.json`, y `pd_curves` trae solo los sensores con curva (los que pasaron la compuerta): el detalle está en el plan, sección 21. Pregunta abierta para quien planifica: si el sitio prefiere ver la prueba parcial de una corrida anterior al cierre (hoy `test_hours` queda vacía hasta el sello, como dice el plan).
 
 ## D27 Una API de estimación con FastAPI, local, de solo lectura y con la misma función que el flujo
 
@@ -435,4 +435,4 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: no hay a quién proteger en los datos; una ruta local en un archivo publicado sí expone el equipo.
 - **Afecta**: `tests/integration/test_published_bytes.py`; RNF12.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U15 (2026-11-17): la prueba recorre los Parquet, los JSON del sitio, el sello y el resumen, el HTML y las figuras de una corrida; en lo comprimido (un Parquet, un PNG) busca solo el directorio de usuario, su nombre, la carpeta temporal y las carpetas de la corrida, y en lo que es texto suma las letras de unidad y las carpetas de usuario de cualquier equipo, porque un patrón corto aparece por azar en bytes comprimidos; otra prueba comprueba la búsqueda sobre archivos que sí tienen una ruta.

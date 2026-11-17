@@ -353,3 +353,36 @@ def rendered_html(tmp_path_factory: pytest.TempPathFactory, star_files):
 
     path = render_design(MODEL, star_files.out_dir, tmp_path_factory.mktemp("design") / "dashboard" / "powerbi-design.html", star_files.run)
     return types.SimpleNamespace(path=path, html=path.read_text(encoding="utf-8"))
+
+
+# --- the site files and the figures of the small history (U15) ----------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def site_files(tmp_path_factory: pytest.TempPathFactory, star_files, quick_cfg):
+    """The five site files exported once from the star model of ``star_files`` (U15, plan section 24.1): ``out_dir``, ``paths``, ``history``, ``run``, ``cap`` and the
+    keyword arguments of the export (``kwargs``). A test that writes works on ``copy_of(out_dir)`` and on a copy of the warehouse."""
+    from flotsilica.site_export import export_site
+    from flotsilica.warehouse import connect
+
+    history, cap = star_files.history, quick_cfg.site.max_total_bytes
+    kwargs = {"seal_path": history.paths.seal, "max_total_bytes": cap}
+    out_dir = tmp_path_factory.mktemp("site") / "site"
+    conn = connect(history.paths.db)
+    try:
+        paths = export_site(conn, out_dir, star_files.run, history.sealed, **kwargs)
+    finally:
+        conn.close()
+    return types.SimpleNamespace(out_dir=out_dir, paths=paths, history=history, run=star_files.run, cap=cap, kwargs=kwargs)
+
+
+@pytest.fixture(scope="session")
+def figures_written(tmp_path_factory: pytest.TempPathFactory, site_files):
+    """The figures written once from the verified site files into a folder that held a figure of an earlier run: ``(folder, paths, {name: bytes})``."""
+    from flotsilica.figures import write_figures
+
+    folder = tmp_path_factory.mktemp("figures") / "figures"
+    folder.mkdir()
+    (folder / "latency.png").write_bytes(b"an earlier figure")
+    paths = write_figures(site_files.out_dir, folder)
+    return folder, paths, {p.name: p.read_bytes() for p in paths}

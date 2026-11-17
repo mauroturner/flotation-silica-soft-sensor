@@ -59,6 +59,13 @@ SENSORS_ES = {"starch_flow": "Flujo de almidón", "amina_flow": "Flujo de amina"
 MONTHS_ES = ("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre")
 WEEKDAYS_ES = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")      # ISO order: Monday is 1
 
+# What the site says about the API of the estimate (plan, sections 18 and 21): the endpoint and, in a sentence each, what it takes and what it gives. The API itself comes with its unit.
+API_ENDPOINT = "POST /estimate"
+API_INPUTS_ES = ("Las lecturas de las 19 variables de la planta de la hora que cerró, los últimos análisis frescos del laboratorio con la hora de su muestra "
+                 "y el instante de emisión, en punto.")
+API_OUTPUTS_ES = ("La estimación de la hora que cerró y de las dos siguientes, cada una con su rango del 80 %, la persistencia, la versión del modelo "
+                  "y la huella de la configuración sellada.")
+
 
 HORIZONS_ES = {0: "la hora que cerró (H0)", 1: "la hora que empieza (H1)", 2: "la hora siguiente (H2)"}
 WHERE_ES = {0: "en la hora que cerró", 1: "en la hora que empieza", 2: "en la hora siguiente"}
