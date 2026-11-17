@@ -63,6 +63,20 @@ def test_a_failed_sync_keeps_the_previous_target_and_leaves_no_temporary_file(tm
     assert target.read_bytes() == b"old" and renamed == [] and [p.name for p in tmp_path.iterdir()] == ["keep.txt"]
 
 
+def test_a_failed_rename_keeps_the_previous_target_and_leaves_no_temporary_file_and_no_open_descriptor(tmp_path, monkeypatch):
+    """``write_atomic`` writes through the descriptor that created the temporary file: when the rename fails the file is closed (it can be removed) and the target is as it was."""
+    target = tmp_path / "keep.txt"
+    target.write_bytes(b"old")
+
+    def broken(source, destination) -> None:
+        raise OSError("access denied")
+
+    monkeypatch.setattr(files.os, "replace", broken)
+    with pytest.raises(OSError, match="access denied"):
+        files.write_atomic(target, "new")
+    assert target.read_bytes() == b"old" and [p.name for p in tmp_path.iterdir()] == ["keep.txt"]
+
+
 def test_a_failure_of_the_writer_keeps_the_previous_target_and_leaves_no_temporary_file(tmp_path):
     """The behaviour that did not change: a writer that raises never replaces the target."""
     target = tmp_path / "keep.txt"

@@ -335,7 +335,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: con 10 s menos de presupuesto que el proyecto 04 queda margen para las correcciones de la evaluación, que en el 04 sumaron unos 13 s.
 - **Afecta**: `tests/conftest.py`; RNF15; AC40.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de la segunda unidad de velocidad (2026-11-17): con las unidades hasta U17 la suite medía 81,4 s y 81,2 s (dos corridas seguidas) y ahora mide 73 s (73,1 y 72,6), con las mismas pruebas y tres más que fijan lo nuevo. `HourTables.row_values` arma las 67 columnas de una hora sin los marcos de `inputs` y `design` la llama (4047 horas de un horizonte: de 2,9 s a 0,25 s, con los mismos bytes), `_row_values` toma el historial del laboratorio como arreglos en vez de por `lab_known_at`, `write_atomic` escribe, sincroniza y cierra con el descriptor que creó el temporal y el lector simple de ARFF de las pruebas guarda los últimos archivos leídos. Lo que queda no es repetición sino trabajo que las pruebas piden: ajustes y predicciones de scikit-learn (alrededor de una quinta parte), los controles SQL de la carga sobre el almacén del accesorio estándar (unos 6 s, solo en `test_load.py`), la lectura y la escritura de archivos recién creados en Windows (alrededor de una sexta parte) y las corridas reales del flujo (`pipeline_launched` y `pipeline_replayed`, unos 4,5 s). Quedan 18 s al presupuesto de trabajo de 90 s para U18 a U23; bajar de los 60 s de la meta pide trabajo en paralelo (procesos que construyan a la vez los estados de sesión independientes) o un cambio de los controles SQL, y ambos son decisiones del dueño (D34).
 
 ## D34 `pytest-xdist`: no se fija
 

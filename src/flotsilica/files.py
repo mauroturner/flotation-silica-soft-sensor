@@ -47,11 +47,28 @@ def atomic_path(path: Path) -> Iterator[Path]:
 
 
 def write_atomic(path: Path, data: str | bytes) -> Path:
-    """Write `data` (text as UTF-8, newlines untouched) to `path` atomically; returns `path`."""
+    """Write `data` (text as UTF-8, newlines untouched) to `path` atomically; returns `path`. The temporary file is written, flushed to disk and closed through the
+    descriptor that created it (the same steps as ``atomic_path`` without opening a file that was just closed, which costs a lot on Windows), and then renamed."""
     payload = data.encode("utf-8") if isinstance(data, str) else data
-    with atomic_path(path) as temporary:
-        temporary.write_bytes(payload)
-    return Path(path)
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, name = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    temporary = Path(name)
+    try:
+        try:
+            stream = os.fdopen(handle, "wb")
+        except BaseException:
+            os.close(handle)
+            raise
+        with stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
+    return path
 
 
 def sha256_file(path: Path, block: int = 1 << 20) -> str:

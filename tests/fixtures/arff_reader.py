@@ -4,6 +4,7 @@ each data line is one csv record with ``'`` as the quote. The tests that check t
 from __future__ import annotations
 
 import csv
+import functools
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -23,8 +24,16 @@ class ParsedArff:
 
 
 def parse(path: Path) -> ParsedArff:
-    """The ARFF read the plain way: lines up to ``@DATA`` are the header, each data line is one csv record with ``'`` as the quote."""
-    text = path.read_bytes().decode("utf-8")
+    """The ARFF read the plain way: lines up to ``@DATA`` are the header, each data line is one csv record with ``'`` as the quote. A file read again with the same size and time
+    gives the same ``ParsedArff`` (the tests of the fixture read the standard one several times and none of them changes what it gets)."""
+    stat = Path(path).stat()
+    return _parse(str(path), stat.st_size, stat.st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=4)
+def _parse(name: str, size: int, mtime_ns: int) -> ParsedArff:
+    del size, mtime_ns   # only part of the cache key
+    text = Path(name).read_bytes().decode("utf-8")
     assert "\r" not in text and "\x00" not in text and text.endswith("\n")
     lines = text.split("\n")[:-1]
     at = lines.index("@DATA")

@@ -15,7 +15,7 @@ import pandas as pd
 import pytest
 
 from flotsilica import features
-from flotsilica.features import HourTables, IssueInputs, LeakageError, build_matrix, design, feature_row, lab_known_at, missing_inputs
+from flotsilica.features import HourTables, IssueInputs, LeakageError, _known_arrays, build_matrix, design, feature_row, lab_known_at, missing_inputs
 from flotsilica.schema import (
     AGGREGATE_COLUMNS,
     FEATURE_COLUMNS,
@@ -119,6 +119,46 @@ def test_the_mean_of_six_is_of_the_latest_six_and_the_history_needed_is_inclusiv
     assert feature_row(inputs, enough)[[c for c in LAB_FEATURE_COLUMNS if c != "lab_mean24"]].notna().all() and missing_inputs(inputs, "fL", enough) is None
     more = dataclasses.replace(view, features=dataclasses.replace(view.features, min_fresh_history=8))
     assert feature_row(inputs, more)[list(LAB_FEATURE_COLUMNS)].isna().all() and missing_inputs(inputs, "fL", more) == "short_lab_history"
+
+
+def test_the_values_of_an_instant_made_without_frames_are_those_of_its_inputs_at_every_instant(small_canonical, quick_cfg):
+    """``HourTables.row_values`` (what ``design`` calls) is ``feature_row(inputs(t))`` bit for bit: at the hours of the small fixture, the March gap and the margins
+    included, at instants that are not an hour, and under other latencies and histories; ``design`` is the stack of those rows."""
+    hours = small_canonical.hours
+    first, last = hours["hour"].iloc[0], hours["hour"].iloc[-1]
+    instants = list(pd.date_range(first - timedelta(hours=3), last + timedelta(hours=3), freq="h")) + [first + timedelta(hours=7, minutes=30), first + timedelta(minutes=5)]
+    for latency, history in ((quick_cfg.lab.latency_hours, quick_cfg.features.min_fresh_history), (3, 1), (1, 6), (2, 24)):
+        view = dataclasses.replace(quick_cfg, lab=dataclasses.replace(quick_cfg.lab, latency_hours=latency), features=dataclasses.replace(quick_cfg.features, min_fresh_history=history))
+        tables = HourTables.from_hours(hours, view)
+        made = 0
+        for t in instants[::2 if latency == quick_cfg.lab.latency_hours else 5]:
+            slow, fast = feature_row(tables.inputs(t.to_pydatetime(), view), view).to_numpy(), tables.row_values(t.to_pydatetime(), view)
+            assert slow.tobytes() == fast.tobytes(), (latency, history, t)
+            made += int(not np.isnan(fast).any())
+        assert made > 100 // (2 if latency == quick_cfg.lab.latency_hours else 5), "most of the instants have every input, so the comparison is not of blank rows"
+        targets = pd.DatetimeIndex(instants[::25])
+        for horizon in (0, 1, 2):
+            expected = np.vstack([feature_row(tables.inputs((target - (horizon - 1) * HOUR).to_pydatetime(), view), view).to_numpy() for target in targets])
+            assert design(tables, targets, horizon, view).to_numpy().tobytes() == expected.tobytes()
+
+
+def test_the_analyses_known_at_an_instant_are_the_ones_of_lab_known_at_in_its_order_whatever_the_frame_is():
+    """``_known_arrays`` (what ``feature_row`` reads) is ``lab_known_at`` without its frame: shuffled rows, repeated sample hours, a missing instant, another
+    resolution, an arrival that is exactly the instant and a time zone, which goes through ``lab_known_at`` itself."""
+    base = pd.Timestamp("2017-03-10 00:00")
+    hours = [base + timedelta(hours=k) for k in (5, 1, 3, 3, 0, 8, 2)]
+    frame = pd.DataFrame({"sample_hour": hours, "silica_pct": [2.5, 2.1, 2.7, 2.6, 2.2, 2.9, 2.4], "available_at": [h + timedelta(hours=2) for h in hours]})
+    variants = {"shuffled": frame, "seconds": frame.assign(sample_hour=frame["sample_hour"].astype("datetime64[s]"), available_at=frame["available_at"].astype("datetime64[s]")),
+                "a missing sample hour": frame.assign(sample_hour=frame["sample_hour"].where(frame.index != 3)), "empty": frame.iloc[0:0],
+                "zone": frame.assign(sample_hour=frame["sample_hour"].dt.tz_localize("UTC"), available_at=frame["available_at"].dt.tz_localize("UTC"))}
+    for name, lab in variants.items():
+        for t in [base + timedelta(hours=k) for k in range(-1, 14)] + [base + timedelta(hours=4, minutes=1)]:
+            instant = t.tz_localize("UTC") if name == "zone" else t
+            known = lab_known_at(lab, instant)
+            sample, silica = _known_arrays(lab, instant)
+            assert silica.tobytes() == known["silica_pct"].to_numpy(dtype="float64").tobytes(), (name, t)
+            newest = known["sample_hour"].tolist()[-1:]
+            assert [x.value if x is not pd.NaT else None for x in sample[-1:]] == [x.value if x is not pd.NaT else None for x in newest], (name, t)
 
 
 # --- what is missing: a blank block and its reason ----------------------------------------------------------------------------
