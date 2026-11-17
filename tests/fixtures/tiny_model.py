@@ -50,11 +50,11 @@ def small_view(quick_cfg, **model):
     return dataclasses.replace(quick_cfg, split=split, model=dataclasses.replace(quick_cfg.model, **changes))
 
 
-def tiny_bundle(quick_cfg, seed: int = 0) -> ModelBundle:
-    """A bundle with one horizon built from synthetic blocks: a forest of 20 trees on ``fSL`` in level, its comparison models and a ridge (B3)."""
+def tiny_bundle(quick_cfg, seed: int = 0, feature_set: str = "fSL") -> ModelBundle:
+    """A bundle with one horizon built from synthetic blocks: a forest of 20 trees on `feature_set` in level, its comparison models and a ridge (B3)."""
     view = small_view(quick_cfg)
     blocks = random_blocks(seed)
-    candidate = Candidate("rf", "fSL", "level", 3)
+    candidate = Candidate("rf", feature_set, "level", 3)
     model = refit_blocks(candidate, blocks, view)
     comparison = {"best_lab_only": refit_blocks(Candidate("rf", "fL", "level", 3), blocks, view)}
     train = blocks["train"]

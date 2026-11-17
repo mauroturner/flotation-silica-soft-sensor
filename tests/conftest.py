@@ -276,3 +276,23 @@ def signal_launch(signal_tables, quick_cfg):
         return built[signal]
 
     return launch
+
+
+# --- a short history with its seal and its estimates (U10) --------------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def small_history(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg):
+    """The small fixture as a launch and three deliveries of twelve hours, fitted, sealed and scored run by run (``tests/fixtures/history.py``): built once.
+    A test that writes works on ``copy_history`` of it."""
+    from tests.fixtures.history import PLAN_A, build_history
+
+    return build_history(tmp_path_factory.mktemp("history_a"), small_canonical, quick_cfg, PLAN_A)
+
+
+@pytest.fixture(scope="session")
+def small_history_one_batch(tmp_path_factory: pytest.TempPathFactory, small_canonical, quick_cfg):
+    """The same hours as ``small_history`` with one delivery of twenty-five hours after the launch instead of three (AC12): built once."""
+    from tests.fixtures.history import PLAN_B, build_history
+
+    return build_history(tmp_path_factory.mktemp("history_b"), small_canonical, quick_cfg, PLAN_B)
