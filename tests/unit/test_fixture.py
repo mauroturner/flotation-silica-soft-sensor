@@ -9,13 +9,14 @@ from __future__ import annotations
 import csv
 import hashlib
 import math
-from dataclasses import dataclass
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from tests.fixtures.arff_reader import column, hours_of, number, parse
 from tests.fixtures.make_fixture import (
     ATTRIBUTES,
     MALFORMED_KINDS,
@@ -29,50 +30,6 @@ from tests.fixtures.make_fixture import (
 HOUR = timedelta(hours=1)
 FIRST_HOUR, LAST_HOUR = datetime(2017, 3, 10, 1), datetime(2017, 9, 9, 23)
 GAP_FIRST, GAP_LAST = datetime(2017, 3, 16, 6), datetime(2017, 3, 29, 11)
-COLUMNS = ["hour", "feed_iron", "feed_silica", *SENSORS, "iron_conc", "silica"]
-
-
-@dataclass
-class ParsedArff:
-    comments: list[str]
-    relation: str
-    attributes: list[tuple[str, str]]
-    rows: list[list[str]]      # the 24 fields of every data line, as text, without their apostrophes
-    raw_lines: list[str]
-
-
-def parse(path: Path) -> ParsedArff:
-    """The ARFF read the plain way: lines up to ``@DATA`` are the header, each data line is one csv record with ``'`` as the quote."""
-    text = path.read_bytes().decode("utf-8")
-    assert "\r" not in text and "\x00" not in text and text.endswith("\n")
-    lines = text.split("\n")[:-1]
-    at = lines.index("@DATA")
-    header, data = lines[:at], lines[at + 1:]
-    comments = [line for line in header if line.startswith("%")]
-    relation = next(line for line in header if line.startswith("@RELATION")).split(" ", 1)[1]
-    attributes = []
-    for line in header:
-        if line.startswith("@ATTRIBUTE"):
-            _tag, name, kind = line.split(" ")
-            attributes.append((name.strip('"'), kind))
-    rows = list(csv.reader(data, quotechar="'", delimiter=","))
-    return ParsedArff(comments, relation, attributes, rows, data)
-
-
-def number(field: str) -> float:
-    assert "." not in field and field.count(",") <= 1, field    # the decimal comma, never a dot
-    return float(field.replace(",", "."))
-
-
-def hours_of(parsed: ParsedArff) -> dict[datetime, list[list[str]]]:
-    by_hour: dict[datetime, list[list[str]]] = {}
-    for row in parsed.rows:
-        by_hour.setdefault(datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S"), []).append(row)
-    return by_hour
-
-
-def column(rows: list[list[str]], name: str) -> list[float]:
-    return [number(row[COLUMNS.index(name)]) for row in rows]
 
 
 # --- the truth against the bytes -------------------------------------------------------------------------------------
@@ -156,10 +113,15 @@ def test_the_header_is_the_real_one_and_the_numbers_are_text_with_a_decimal_comm
     assert head.index("@RELATION") > max(head.index(line) for line in parsed.comments)       # comments only before @RELATION
     assert '@ATTRIBUTE "%_Iron_Feed" STRING' in head and "@ATTRIBUTE date STRING" in head and head.count("@ATTRIBUTE") == 24
     assert text.count("@DATA") == 1
-    # every field is quoted with an apostrophe, there are 24 per line and none is empty; the date is YYYY-MM-DD HH:00:00
-    for line, row in zip(parsed.raw_lines[:2000], parsed.rows[:2000], strict=True):
-        assert line.startswith("'") and line.endswith("'") and line.count("','") == 23 and len(row) == 24
-        assert all(row)
+    # there are 24 fields per line and none is empty; each is between apostrophes or, as the real file writes a number with no fractional part,
+    # a bare integer; the date is YYYY-MM-DD HH:00:00
+    bare = 0
+    for line, row in zip(parsed.raw_lines, parsed.rows, strict=True):
+        fields = re.findall(r"'[^']*'|-?[0-9]+", line)
+        assert line.startswith("'") and len(row) == 24 and len(fields) == 24 and ",".join(fields) == line and all(row)
+        bare += sum(not f.startswith("'") for f in fields)
+    assert bare > 1000
+    for row in parsed.rows[:2000]:
         assert datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S").minute == 0 and row[0].endswith(":00:00")
     sample = [number(f) for row in parsed.rows[:500] for f in row[1:]]
     assert any(f.count(",") == 1 for row in parsed.rows[:50] for f in row[1:]) and not any("." in f for row in parsed.rows for f in row)

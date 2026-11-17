@@ -9,6 +9,7 @@ the rendered design and the figures) are added by the unit that writes the code 
 from __future__ import annotations
 
 import shutil
+import types
 from collections.abc import Callable
 from pathlib import Path
 
@@ -46,6 +47,14 @@ def cfg():
     from flotsilica.config import load_config
 
     return load_config(PROJECT_ROOT / "config" / "pipeline.toml")
+
+
+@pytest.fixture(scope="session")
+def quick_cfg():
+    """The quick-mode configuration (12 rows per hour, the fixture's), loaded once."""
+    from flotsilica.config import load_config
+
+    return load_config(PROJECT_ROOT / "config" / "pipeline.quick.toml")
 
 
 # --- the synthetic fixture, its sizes and its variants ---------------------------------------------------------------
@@ -131,3 +140,15 @@ def copy_of(tmp_path: Path) -> Callable[[Path], Path]:
         return target
 
     return copy
+
+
+@pytest.fixture(scope="session")
+def canonical(fixture_arff: Path, quick_cfg):
+    """The standard fixture read once into its canonical tables (plan, section 24.1): ``read`` (the 24 columns of every row, as the reader
+    returns them), ``report`` (its ``SourceReport``), ``rows`` (``source_rows``, without a laboratory column) and ``hours`` (``source_hours``)."""
+    from flotsilica.ingest import canonical as build
+    from flotsilica.ingest import read_arff
+
+    read, report = read_arff(fixture_arff, quick_cfg)
+    rows, hours = build(read, quick_cfg)
+    return types.SimpleNamespace(read=read, report=report, rows=rows, hours=hours)

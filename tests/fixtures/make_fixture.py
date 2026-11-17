@@ -14,7 +14,8 @@ written with two decimals. On it are planted, as the real file has them (researc
 * held stretches: 2 to 10 hours equal to the fresh hour before them;
 * a feed (``% Iron Feed`` and ``% Silica Feed``) that stays unchanged for hours or days and never changes within an hour;
 * ``air_flow_04`` and ``air_flow_05`` fixed within some hours;
-* ``% Iron Concentrate`` correlated with the silica at -0.8.
+* ``% Iron Concentrate`` correlated with the silica at -0.8;
+* a number with no fractional part (``390``) written without apostrophes, as the real file does with every one of them.
 
 ``signal="sensor_signal"`` adds ``beta x amina_flow`` of the same hour to the silica (the positive control: the model with sensors can beat
 the persistence and the gate finds ``amina_flow`` with its sign); ``signal="lab_only"`` makes every sensor independent noise, hour to hour
@@ -26,6 +27,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -220,6 +222,9 @@ def _lab_series(raw_silica: np.ndarray, raw_iron: np.ndarray, observed: np.ndarr
     return silica, iron, state, ramp
 
 
+_BARE_INTEGER = re.compile(r"(?<![^," + chr(10) + r"])'(-?[0-9]+)'(?![^," + chr(10) + r"])")
+
+
 def _fmt(values: np.ndarray) -> list[str]:
     """Decimal-comma text with up to six decimals and no trailing zeros, as the real file writes the laboratory columns."""
     return [f"{v:.6f}".rstrip("0").rstrip(".").replace(".", ",") for v in values]
@@ -306,7 +311,8 @@ def make_fixture(path: Path | str, rows_per_hour: int = 12, seed: int = 0, signa
     })
     buffer = io.StringIO()
     frame.to_csv(buffer, header=False, index=False, quoting=csv.QUOTE_ALL, quotechar="'", decimal=",", float_format="%.6g", lineterminator="\n")
-    content = _header(rows_per_hour, seed, signal) + buffer.getvalue().encode("utf-8")
+    body = _BARE_INTEGER.sub(lambda match: match.group(1), buffer.getvalue())          # the real file writes a number with no fractional part without apostrophes
+    content = _header(rows_per_hour, seed, signal) + body.encode("utf-8")
     path.write_bytes(content)
 
     # the truth
