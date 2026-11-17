@@ -1,6 +1,7 @@
-"""The least of a warehouse that the validation reads (U05): ``deliveries``, ``raw_rows`` and ``lab_hours``, with the columns of the plan's
-section 5 that the rules look at. U06 writes the real schema and ``load_delivery``; this stands in only for the tests of ``validate``, which
-only reads what is loaded, and is dropped when those tests move to the real warehouse."""
+"""The least of a warehouse that the validation reads: ``deliveries``, ``raw_rows`` and ``lab_hours``, with the columns of the plan's section 5 that the
+rules look at, so that a test of ``validate`` can load a delivery with one line and break one thing by hand. The real schema and
+``load_delivery`` are U06's; ``tests/integration/test_load.py::test_the_rules_of_the_validation_read_what_this_warehouse_holds`` runs the rules over
+a warehouse loaded by them, which pins that every column this stand-in has is one the real tables have."""
 
 from __future__ import annotations
 

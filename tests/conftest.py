@@ -165,3 +165,36 @@ def published(tmp_path_factory: pytest.TempPathFactory, canonical, quick_cfg):
     entries = {spec.delivery_id: publish(spec, canonical.rows, canonical.hours, folder) for spec in plan}
     items = {delivery_id: (entry, *read_delivery(folder, entry)) for delivery_id, entry in entries.items()}
     return types.SimpleNamespace(folder=folder, plan=plan, entries=entries, items=items)
+
+
+@pytest.fixture(scope="session")
+def loaded_masters(tmp_path_factory: pytest.TempPathFactory, published, quick_cfg) -> Callable[[int], tuple[Path, object]]:
+    """``loaded_masters(upto)``: ``(path, LoadResult of its last load)`` of a warehouse with the first `upto` deliveries of the quick plan,
+    loaded by runs ``r1``, ``r2``... with the SHA-256 of their published files. Each is a copy of the largest one already built below it with
+    the missing deliveries loaded (project 03, D76). A test that writes works on ``copy_of(path)``."""
+    from flotsilica.warehouse import connect, load_delivery
+
+    folder = tmp_path_factory.mktemp("masters")
+    plan = published.plan
+    built: dict[int, tuple[Path, object]] = {}
+
+    def build(upto: int) -> tuple[Path, object]:
+        if not 1 <= upto <= len(plan):
+            raise ValueError(f"upto: from 1 to {len(plan)}, got {upto}")
+        if upto not in built:
+            below = max((k for k in built if k < upto), default=0)
+            path = folder / f"master_{upto}.sqlite"
+            if below:
+                shutil.copy2(built[below][0], path)
+            conn = connect(path)
+            try:
+                for index in range(below, upto):
+                    spec = plan[index]
+                    entry, rows, hours = published.items[spec.delivery_id]
+                    result = load_delivery(conn, rows, hours, spec, f"r{index + 1}", quick_cfg, sha256=entry.sha256)
+            finally:
+                conn.close()
+            built[upto] = (path, result)
+        return built[upto]
+
+    return build

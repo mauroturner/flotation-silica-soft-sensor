@@ -283,7 +283,7 @@ SQLite con archivos SQL en capas y controles en SQL (D24). Reglas del runner (`w
 - `pipeline_runs` (`run_key`): `started_at`, `finished_at`, `status` (`running`, `ok`, `failed`, `rejected`, `no_delivery`), `delivery_id`, `as_of`, `source_sha256`, `rows_delivery`, `estimates_issued`, `estimates_missing`, `peak_working_set_mb`, `peak_commit_mb`, `memory_counter`, `message`.
 - `validation_results` (`run_key`, `rule_id`): `name_es`, `severity`, `scope`, `aggregation` (`source`, `per_run`, `latest`), `passed`, `rows_affected`, `hours_affected`, `examples_json` (horas, nunca filas enteras).
 
-`sql/schema/002_hours.sql`: `stg_hours`, la vista de `lab_hours` unida a `hour_aggregates` con `block` (de `split.block_of`, guardado en `hour_blocks` (`hour`): `block` en `train`, `purge_1`, `valid_v1`, `purge_v`, `valid_v2`, `purge_2`, `test`, `outside`).
+`sql/schema/002_hours.sql`: `hour_blocks` (`hour`): `block` en `train`, `purge_1`, `valid_v1`, `purge_v`, `valid_v2`, `purge_2`, `test`, `outside`. `stg_hours` (la unión de `lab_hours` con `hour_aggregates` y `hour_blocks`) no está en el esquema: la crea `sql/staging/stg_hours.sql` con `CREATE TABLE AS` en cada reconstrucción. **U06**: `hour_blocks` se reconstruye en esa misma reconstrucción, en SQL, con los bordes de `[split]` que recibe como parámetros con nombre (la regla de D10); `split.block_of` (U08) es la misma regla en Python y una prueba las compara, como el proyecto 04 con las funciones de sus líneas.
 
 `sql/schema/003_model.sql`:
 
@@ -344,8 +344,8 @@ Entregas (`deliveries.py`): el plan sale de la configuración: el lanzamiento co
 
 ## 7. SQL
 
-- `sql/staging/stg_hours.sql`: `lab_hours` unida a `hour_aggregates` y a `hour_blocks`, con las horas `<= :as_of`.
-- `sql/checks/load/`: `chk_raw_row_unique`, `chk_rows_per_hour_max`, `chk_aggregates_match_rows` (media y conteo de cada sensor contra `raw_rows`, a 10⁻⁹), `chk_available_at_is_hour_plus_latency`, `chk_delivery_period`, `chk_lab_state_rules` (una hora `interpolated` tiene la anterior en rampa; una `held` repite el valor anterior).
+- `sql/staging/stg_hours.sql`: `lab_hours` unida a `hour_aggregates` y a `hour_blocks`, con las horas que habían cerrado en el instante `:as_of`: `hour < :as_of` (la hora `h` cubre `[h, h + 1 h)`; con `<=` entraría una hora que todavía no cerró).
+- `sql/checks/load/`: `chk_raw_row_unique`, `chk_rows_per_hour_max`, `chk_aggregates_match_rows` (media y conteo de cada sensor contra `raw_rows`, a 10⁻⁹), `chk_available_at_is_hour_plus_latency`, `chk_delivery_period`, `chk_lab_state_rules` (una hora `held` repite el valor de la hora anterior; una `interpolated` tiene hora anterior y su valor es distinto; una `fresh` nunca es igual a la anterior; después de un hueco no hay anterior. La marca de rampa no se guarda, así que «la anterior está en rampa» no se puede comprobar en SQL: solo lo que dicen los valores guardados). `chk_aggregates_match_rows` compara el conteo y la media de cada sensor, y cuenta como violación una hora con agregados sin filas o con filas sin agregados; cada violación es la hora, qué difiere (`rows`, `hour_without_rows`, `hour_without_aggregates` o el sensor) y los dos valores.
 - `sql/marts/powerbi/` y `sql/checks/model/` (corren en `export`): `chk_one_estimate_per_target_and_horizon`, `chk_issue_at_matches_target_and_horizon` (`issue_at = target_hour − horizon + 1 h`), `chk_interval_contains_estimate`, `chk_tracking_only_after_arrival` (`actual` no nulo solo si `available_at ≤ as_of`), `chk_eight_methods_per_estimate`, `chk_fk_*` (una por relación), `chk_star_keys_unique`.
 
 ## 8. Horas y frescura del laboratorio (`hours.py`)
@@ -760,8 +760,10 @@ class ValidationError(RuntimeError): ...
 # warehouse.py
 def connect(path: Path) -> sqlite3.Connection
 def apply_schema(conn) -> None
-def load_delivery(conn, rows, hours, spec, run_key: str, view) -> LoadResult
-def run_checks(conn, group: Literal["load", "model"]) -> list[CheckResult]
+def load_delivery(conn, rows, hours, spec, run_key: str, view, *, sha256: str) -> LoadResult   # sha256: el de la entrega en el manifiesto
+def run_checks(conn, group: Literal["load", "model"], params=None) -> list[CheckResult]
+def rebuild_staging(conn, as_of: datetime, view) -> list[CheckResult]      # hour_blocks y stg_hours para un instante
+def sql_params(as_of: datetime, view) -> dict                                # as_of, latency_hours, rows_per_hour y los bordes de [split]
 
 # tracking.py, reporting.py, export.py, site_export.py, dashboard, figures.py, texts.py
 def tracking_at(conn, as_of: datetime, view: SealedConfig) -> pd.DataFrame

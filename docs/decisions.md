@@ -244,7 +244,7 @@ Estados: **vigente**, **pendiente del dueño**, **reemplazada por Dxx**.
 - **Motivo**: un filtro por instante en una sola función es lo que permite probar la perturbación (AC11); la tabla es chica (unas 4.100 horas).
 - **Afecta**: `warehouse.py`, `sql/`; RF08; AC08.
 - **Quién**: agente de planificación.
-- **Estado**: vigente.
+- **Estado**: vigente. Nota de U06 (2026-11-17): `stg_hours` toma las horas anteriores a `:as_of` (no `<=`: la hora `h` cubre `[h, h + 1 h)` y no había cerrado), `hour_blocks` se reconstruye en SQL con los bordes de la configuración que recibe y `chk_lab_state_rules` solo comprueba lo que dicen los valores guardados, porque la marca de rampa no llega al almacén (D04). Pregunta abierta para quien planifica: si quiere guardar esa marca para comprobar «la anterior está en rampa» tal cual lo dice la sección 7 del plan.
 
 ## D25 Salidas para Power BI y diseño del tablero en HTML
 
