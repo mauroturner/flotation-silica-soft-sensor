@@ -1,7 +1,8 @@
 """The documentation is checked like code (AC22, AC39; RF28; RNF14; plan, sections 25 and 26).
 
-U22: the README has the headings of plan section 25 in their order, its results block is the sealed summary that ``docs-sync`` copies (never one written
-by hand), and it says the unfavourable verdicts («no supera») in «El problema», «La solución» and «Los resultados»; the model card has the contents the plan
+U22, restructured into the portfolio's common outline (ESTRUCTURA-PROYECTOS.md): the README has the numbered sections and the appendices in their order, its
+results block is the sealed summary that ``docs-sync`` copies (never one written by hand), in the appendix that frames it, and it says the unfavourable
+verdicts («no supera») in «1. Resumen ejecutivo», in 5.1 and in that appendix; the model card has the contents the plan
 lists, every verdict as the summary writes it, the memory counters and the suite's limit. These tests read the versioned Markdown and the versioned reports
 and run nothing.
 
@@ -27,9 +28,17 @@ import pytest
 from flotsilica.reporting import RESULTS_END, RESULTS_START
 
 README_TITLE = "# Sílice en el concentrado, sin esperar al laboratorio"
-README_HEADINGS = [   # plan, section 25, in this order (AC39)
-    "El problema", "La solución", "Los resultados", "En qué consiste", "Los datos", "Los algoritmos", "El producto", "La documentación",
-    "Con IA, de punta a punta", "Para qué sirve", "Cómo correrlo de punta a punta", "Paso a paso", "Fuente y licencia",
+README_HEADINGS = [   # the portfolio's common outline (ESTRUCTURA-PROYECTOS.md), then the appendices, in this order (AC39)
+    "1. Resumen ejecutivo", "2. Datasets y preparación", "3. Arquitectura y metodología", "4. Producto final", "5. Conclusión",
+    "Anexo: resultados de la corrida sellada", "Cómo correrlo de punta a punta", "Paso a paso", "Fuente y licencia",
+]
+APPENDIX = "Anexo: resultados de la corrida sellada"   # frames the generated block, which carries its own «## Resultados» (D44, D48)
+SUB_HEADINGS = [   # the numbered sub-sections, in this order
+    "1.1 Problema de negocio y solución", "1.2 Criterios de éxito e impacto", "2.1 Fuentes, alcance y granularidad", "2.2 Saneamiento y reglas de calidad",
+    "3.1 Fuente e ingesta", "3.2 Orquestación y transformación", "3.3 Almacenamiento y modelado de datos", "3.4 Experimentación y Machine Learning",
+    "3.4.1 Ingeniería de características y línea base (baseline)", "3.4.2 Decisiones de modelado y ablación (ADR)",
+    "3.4.3 Protocolo de validación (partición en el tiempo)", "3.5 Consumo y gobernanza", "4.1 Entregables operativos", "4.2 Lectura de resultados actuales",
+    "5.1 Evaluación frente a criterios de éxito", "5.2 Limitaciones metodológicas", "5.3 Trabajo futuro",
 ]
 MODEL_CARD_HEADINGS = [   # what plan section 25 lists for the model card, in this order
     "Uso previsto y no previsto", "Datos", "La frescura y por qué las cifras difieren de research.md", "Latencia supuesta", "Horizontes", "Partición",
@@ -77,8 +86,9 @@ def test_readme_headings_in_order_and_results_block_matches_summary(project_root
     written = (project_root / "reports" / "evaluation_summary.md").read_text(encoding="utf-8")
     assert block == written.strip("\n")   # what docs-sync copies, byte for byte
     assert block.startswith(RESULTS_HEADING + "\n") and re.findall(r"^## (.+)$", block, flags=re.MULTILINE) == ["Resultados"]
-    framing = section(readme, "Los resultados", end=RESULTS_START)   # «Los resultados» frames the block before it and reads it after it (D48)
-    assert len(framing.strip()) > 400 and "\n## En qué consiste\n" in tail
+    assert re.findall(r"^#{3,4} (\d.+)$", head + tail, flags=re.MULTILINE) == SUB_HEADINGS
+    framing = section(readme, APPENDIX, end=RESULTS_START)   # the appendix frames the block before it; 5.1 reads its figures (D48)
+    assert len(framing.strip()) > 300 and "\n## Cómo correrlo de punta a punta\n" in tail
     # AC22: the sealed summary is unfavourable, and the README says «no supera» outside the block too, in the three sections that tell it
     assert summary["evaluation_status"] == "sealed" and summary["post_seal"] is None
     assert [c["criterion_id"] for c in summary["criteria"] if c["passed"] is False] == FAILED
@@ -86,8 +96,8 @@ def test_readme_headings_in_order_and_results_block_matches_summary(project_root
     assert [c["criterion_id"] for c in summary["criteria"] if c["passed"] is None] == ["C10"]
     for criterion in summary["criteria"]:
         assert criterion["verdict_es"] in block, criterion["criterion_id"]
-    reading = framing + tail.split("\n## En qué consiste\n")[0]
-    for title, text in (("El problema", section(readme, "El problema")), ("La solución", section(readme, "La solución")), ("Los resultados", reading)):
+    reading = section(readme, "5. Conclusión").split("\n### 5.2 ")[0]   # 5.1, which reads the criteria against their results
+    for title, text in (("1. Resumen ejecutivo", section(readme, "1. Resumen ejecutivo")), ("5.1", reading), (APPENDIX, framing)):
         assert "no supera" in text, title
     for criterion in FAILED + PASSED:
         assert re.search(rf"\b{criterion}\b", reading), criterion
