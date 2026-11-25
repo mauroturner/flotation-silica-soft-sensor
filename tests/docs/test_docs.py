@@ -27,7 +27,7 @@ import pytest
 
 from flotsilica.reporting import RESULTS_END, RESULTS_START
 
-README_TITLE = "# Sílice en el concentrado, sin esperar al laboratorio"
+README_TITLE = "# Bosque aleatorio y predicción conformal para estimar la sílice en flotación"
 README_HEADINGS = [   # the portfolio's common outline (ESTRUCTURA-PROYECTOS.md), then the appendices, in this order (AC39)
     "1. Resumen ejecutivo", "2. Datasets y preparación", "3. Arquitectura y metodología", "4. Producto final", "5. Conclusión",
     "Anexo: resultados de la corrida sellada", "Cómo correrlo de punta a punta", "Paso a paso", "Fuente y licencia",

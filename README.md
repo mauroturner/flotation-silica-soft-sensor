@@ -1,4 +1,4 @@
-# Sílice en el concentrado, sin esperar al laboratorio
+# Bosque aleatorio y predicción conformal para estimar la sílice en flotación
 
 | | |
 | --- | --- |
