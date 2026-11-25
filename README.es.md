@@ -355,3 +355,5 @@ Fuente de datos: Eduardo Magalhães Oliveira, «Quality Prediction in a Mining P
 La latencia de 2 horas del laboratorio es un supuesto tomado de otra planta: Moraes et al. (2018), https://doi.org/10.5151/2237-0234-31915; el archivo no la trae.
 
 Los datos crudos no se versionan: el flujo no descarga nada y exige que el archivo tenga el tamaño y la huella fijados. El archivo no trae datos personales.
+
+El código está bajo la [licencia MIT](LICENSE); los datos de origen conservan la licencia indicada arriba.

@@ -354,3 +354,5 @@ The flow does not download the file: get OpenML dataset 43311 (https://www.openm
 Data source: Eduardo Magalhães Oliveira, «Quality Prediction in a Mining Process» [Dataset]. Kaggle, CC0 (https://creativecommons.org/publicdomain/zero/1.0/). Copy used: OpenML, dataset 43311 (https://www.openml.org/search?type=data&id=43311), an ARFF file converted from the source, 185,243,565 bytes, SHA-256 `a25122979ba8c5fb9c12e361db61032efc6892a24b5746cc8309da601d9639b2`, not compared byte by byte with the Kaggle CSV. Changes: read as an untrusted file, readings added up by hour, the freshness of each analysis flagged, the history split into a launch, 40 daily deliveries and a close, and variables, baselines, estimates, ranges, metrics and criteria calculated.
 
 The 2-hour laboratory delay is an assumption taken from another plant: Moraes et al. (2018), https://doi.org/10.5151/2237-0234-31915. The raw data is not versioned.
+
+The code is under the [MIT licence](LICENSE); the source data keeps the licence given above.
